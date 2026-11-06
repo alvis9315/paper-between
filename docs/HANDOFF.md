@@ -6,7 +6,7 @@
 
 兩輪閱讀／書架優化及本次文件建立已完成，等待使用者實際觀感回饋。先讀 `../AGENTS.md`、`../STATUS.md` 與 `../CHANGELOG.md`；不要回到 clone 時的 1.4.2 重新做一遍。
 
-最新使用者要求：以後每輪優化完成、驗證通過後直接部署既有 Site。程式、文件與 5 個測試已於 GitHub commit `b43b03a` 保存；本輪補入持續部署規則，並發布 1.5.0。當前部署中，成功後回填下方紀錄。
+最新使用者要求：以後每輪優化完成、驗證通過後直接部署既有 Site。程式、文件與 5 個測試已於 GitHub commit `b43b03a` 保存；本輪補入持續部署規則，並發布 1.5.0。1.5.0 已成功上線，部署證據見下節。
 
 ## 每輪部署方式與目前狀態
 
@@ -15,7 +15,12 @@
 - 線上網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
-- 本輪 1.5.0：部署中，待回填來源 commit／saved version ID／deployment ID 與終態。
+- 本輪原始碼 1.5.0，Sites 版本 8：`succeeded`，2026-11-06 20:18（Asia/Taipei）。
+- 實際部署來源：`3b45fdcc6584613f9ed506203302a88167bb014e`；與當時 GitHub main 相同。
+- saved version ID：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_e348a48bb41481919c821ac771e48c57`
+- deployment ID：`appgdep_6aedc59f7dfc8191a5a6aabeece34bb6`
+- 第一次發布 `appgdep_6aedc5752ce08191b59eb0cfe5fec7bd` 因服務暫時無法使用而失敗；同版本重試後成功。不要再重試已成功的部署。
+- 這次發布證據回填為純文件變更，不需要重新發布同一套程式。
 - `.sites-checkout/` 是被忽略的部署暫存 checkout，可重建；不要把憑證或其 Git metadata 放進 GitHub。
 
 部署成功後回填的純文字紀錄可以再 commit／push，不必為相同的程式重複部署。所有紀錄都應指出真正部署的來源 commit。

@@ -25,7 +25,7 @@ tags:
 
 ## 正在進行
 
-使用者已要求之後每輪優化完成直接部署；規則已加入 AGENTS。目前正在將已完成的 1.5.0 發布到既有 Site，尚未確認部署成功。
+1.5.0 已部署至既有 Site，平台回傳 succeeded。之後每輪優化完成、驗證通過後直接部署的規則已加入 AGENTS；目前等待使用者的下一個優化回饋。
 
 ## 下一個明確動作
 
@@ -41,11 +41,16 @@ tags:
 
 - [中] 尚未用實體手機與 Safari 驗證；Chrome 的手機尺寸與觸控模擬不等於實機驗收。
 - [中] 筆記只保存在瀏覽器；GitHub 不含個人 PDF／筆記。不同網址、瀏覽器或裝置要用書架 ZIP 搬移。
-- [中] 部署仍在進行；只有部署回傳 succeeded 才能確認線上版更新。
 - [低] PDF 掃描頁尚無 OCR，PDF 原文不可直接改寫；其餘匯入與備份限制見 README。
 
 ## Site 部署紀錄
 
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
-- 1.5.0：部署中；成功後回填來源 commit、版本 ID、部署 ID。
+- 原始碼版本：1.5.0；Sites 版本：8。
+- 部署來源 commit：`3b45fdcc6584613f9ed506203302a88167bb014e`（GitHub 與 Sites 來源一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_e348a48bb41481919c821ac771e48c57`
+- deployment_id：`appgdep_6aedc59f7dfc8191a5a6aabeece34bb6`
+- 結果：`succeeded`，2026-11-06 20:18（Asia/Taipei）。
+- 第一次發布曾回傳服務暫時無法使用；使用同一個 saved version 重試後成功，未另建 Site 或改變 public 權限。
+- 本紀錄的後續文件 commit 只回填發布證據，沒有變更已部署的程式。
