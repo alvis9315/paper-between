@@ -4,7 +4,7 @@
 
 ## 目前接續位置
 
-使用者要求先修手機搜尋放大、PDF 白頁、工具列／書架高佔位，再做 PDF 重排與考前小卡。1.6.2 build 與 28 個 Chrome／WebKit 執行個案已通過，正在部署。手機為 Safari 26.0.1；沒有原始兩份 PDF，未重現個別檔案根因。
+使用者要求先修手機搜尋放大、PDF 白頁、工具列／書架高佔位，再做 PDF 重排與考前小卡。1.6.2 build 與 28 個 Chrome／WebKit 執行個案已通過，已部署成功，開始重排與小卡。手機為 Safari 26.0.1；沒有原始兩份 PDF，未重現個別檔案根因。
 
 PDF 改 legacy build／worker、低畫布預算、繪圖排隊，選字層可獨立失敗；錯誤保留診斷、重試與原檔。手機搜尋至少 16px 且依 visualViewport／dvh 限高，不禁用 pinch zoom；手機選單用有主題樣式的 Popover，搜尋留外。WebKit 自訂選單加明確 focus。
 
@@ -18,7 +18,16 @@ PDF 改 legacy build／worker、低畫布預算、繪圖排隊，選字層可獨
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
 
-### 最新部署：1.6.1
+### 最新部署：1.6.2
+
+- 原始碼版本：1.6.2；Sites 版本：12。
+- 部署來源 commit：`04f165be0c41b691b92d20012ee756605e54496c`。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_1eda1d2f48b08191962374e80fe83a90`
+- deployment_id：`appgdep_6aedd85244548191a6757ea1d01fec72`
+- 結果：`succeeded`，2026-11-06 21:38（Asia/Taipei）。
+- 後續文件 commit 回填證據，不改變實際部署來源。
+
+### 歷史部署：1.6.1
 
 - 原始碼版本：1.6.1；Sites 版本：11。
 - 部署來源 commit：`45469fe9aa776c3f84ae46512a3acfb34509ae4b`（與本輪 GitHub 程式版本一致）。

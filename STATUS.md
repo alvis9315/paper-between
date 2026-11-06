@@ -24,7 +24,7 @@ tags:
 
 ## 正在進行
 
-先完成手機搜尋、PDF 顯示與工具列問題，再實作 PDF 重排第一階段與獨立考前小卡。1.6.2 已通過建置與 28 個 Chrome／WebKit 執行個案，正在部署。
+先完成手機搜尋、PDF 顯示與工具列問題，再實作 PDF 重排第一階段與獨立考前小卡。1.6.2 已通過建置與 28 個 Chrome／WebKit 執行個案，已部署成功，開始重排與小卡。
 
 ## 下一個明確動作
 
@@ -47,7 +47,16 @@ tags:
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 
-### 最新：1.6.1
+### 最新：1.6.2
+
+- 原始碼版本：1.6.2；Sites 版本：12。
+- 部署來源 commit：`04f165be0c41b691b92d20012ee756605e54496c`。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_1eda1d2f48b08191962374e80fe83a90`
+- deployment_id：`appgdep_6aedd85244548191a6757ea1d01fec72`
+- 結果：`succeeded`，2026-11-06 21:38（Asia/Taipei）。
+- 後續文件 commit 回填證據，不改變實際部署來源。
+
+### 歷史：1.6.1
 
 - 原始碼版本：1.6.1；Sites 版本：11。
 - 部署來源 commit：`45469fe9aa776c3f84ae46512a3acfb34509ae4b`（與本輪 GitHub 程式版本一致）。
