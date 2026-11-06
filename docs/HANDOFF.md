@@ -4,7 +4,7 @@
 
 ## 目前接續位置
 
-本輪依使用者指定 AppsScript HTML 重做小卡，先前 Word 與策略工作保留。1.8.0 build、完整 26 情境 × Chrome／WebKit 共 52 個執行個案與 diff 檢查通過；正在 push／部署並回填。
+本輪依使用者指定 AppsScript HTML 重做小卡，先前 Word 與策略工作保留。1.8.0 build、完整 26 情境 × Chrome／WebKit 共 52 個執行個案與 diff 檢查通過，GitHub 同步及 Sites 版本 15 部署成功。
 
 - 小卡桌機／手機：`StudyCards.vue` + `src/study.css`；>900px 常駐左結果右卡片，≤900px 搜尋後先清單再單卡，其他操作進選單；主畫面沒有重複大標、宣傳／保存說明，側邊與頂部共用 gutter。
 - 內容：`cardContent.ts` 清理 HTML／高亮／欄位驗證，`cardImport.ts` 只讀資料匯入。ReviewCard 新可選欄位保留速答、題幹、表格答案、收藏、章節／別名及原文頁，舊版相容。原有 saveLibrary／ZIP 路徑沿用，新欄位還原與圖片參照已驗證。
@@ -33,7 +33,16 @@
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
 
-### 最新部署：1.7.1
+### 最新部署：1.8.0
+
+- 原始碼版本：1.8.0；Sites 版本：15。
+- 部署來源 commit：`47f4c0747311462378bb572b59ea0f3c4dc3b78b`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_20b2435f5ce88191954a27e07411125f`
+- deployment_id：`appgdep_6aee02508c5c819199551bc288cb1ee9`
+- 結果：`succeeded`，2026-11-07 00:37（Asia/Taipei）。
+- 後續純文件 commit 回填證據，不改變實際部署來源。
+
+### 先前部署：1.7.1
 
 - 原始碼版本：1.7.1；Sites 版本：14。
 - 部署來源 commit：`ac8d26d0e19e07c9bf527f7fb64b4cc5e75868d4`（與本輪 GitHub 程式版本一致）。
@@ -159,7 +168,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-1.8.0 小卡重做、build、完整 52 個回歸個案與 diff 檢查完成，正在 push／部署回填。原參考 HTML 已跨引擎匯入、日夜／桌機／手機檢視、ZIP 驗證；實體 Safari 26.0.1 仍待確認。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
+1.8.0 小卡重做、build、完整 52 個回歸個案與 diff 檢查、GitHub 同步及部署完成。沒有未完成的本輪程式工作。原參考 HTML 已跨引擎匯入、日夜／桌機／手機檢視、ZIP 驗證；實體 Safari 26.0.1 仍待確認。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei

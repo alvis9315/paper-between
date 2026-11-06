@@ -16,7 +16,7 @@
 - 可直接選取指定格式的小卡 HTML／JSON 匯入；只讀資料不執行程式，完整驗證並清理答案，重複檔案不覆蓋人工修改或收藏，錯誤用彈窗引導。
 - 新欄位、答案格式、收藏、原文與題圖保存於既有資料庫／ZIP，相容舊卡與舊備份；沒有加入 AI 自動產題或雲端同步。
 - 已用實際指定 HTML 在 Chrome／WebKit 匯入 184 張及完成 ZIP 對照；私人教材沒有納入 GitHub 或部署。
-- build、26 情境跨 Chrome／WebKit 的 52 個執行個案與 diff 檢查通過，部署終態及來源見 STATUS／交接。
+- build、26 情境跨 Chrome／WebKit 的 52 個執行個案與 diff 檢查通過；已部署既有 Site（Sites 版本 15，succeeded），來源及部署 ID 見 STATUS／交接。
 
 ## 1.7.1 — 2026-11-06
 

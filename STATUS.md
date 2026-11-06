@@ -31,7 +31,7 @@ tags:
 
 ## 正在進行
 
-1.8.0 功能、build、完整 52 個跨引擎回歸個案與 diff 檢查通過。正在同步 GitHub、部署既有 Site 並回填紀錄。
+1.8.0 功能、build、完整 52 個跨引擎回歸個案與 diff 檢查通過，已同步 GitHub，Sites 版本 15 部署成功。沒有未完成的本輪程式工作。
 
 ## 下一個明確動作
 
@@ -56,7 +56,16 @@ tags:
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 
-### 最新：1.7.1
+### 最新：1.8.0
+
+- 原始碼版本：1.8.0；Sites 版本：15。
+- 部署來源 commit：`47f4c0747311462378bb572b59ea0f3c4dc3b78b`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_20b2435f5ce88191954a27e07411125f`
+- deployment_id：`appgdep_6aee02508c5c819199551bc288cb1ee9`
+- 結果：`succeeded`，2026-11-07 00:37（Asia/Taipei）。
+- 後續純文件 commit 回填證據，不改變實際部署來源。
+
+### 歷史：1.7.1
 
 - 原始碼版本：1.7.1；Sites 版本：14。
 - 部署來源 commit：`ac8d26d0e19e07c9bf527f7fb64b4cc5e75868d4`（與本輪 GitHub 程式版本一致）。
