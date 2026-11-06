@@ -6,6 +6,8 @@
 
 ## 開發與接續入口
 
+線上入口：<https://paper-between-alvis9315.javacj02004.chatgpt.site>。每輪優化完成、驗證通過後，直接同步 GitHub 並部署既有 Site；實際部署狀態與來源 commit 見 [STATUS.md](STATUS.md)。
+
 目前原始碼版本：**1.5.0**。換電腦或換 agent 時，先讀下列文件：
 
 | 文件 | 用途 |

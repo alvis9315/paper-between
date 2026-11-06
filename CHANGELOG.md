@@ -4,7 +4,8 @@
 
 ## Unreleased
 
-尚無已排定的新功能；下一輪使用者回饋與未完成工作見 [STATUS.md](STATUS.md) 及 [交接](docs/HANDOFF.md)。
+- 開發流程：每輪優化完成並驗證後，直接同步 GitHub 與部署既有 Site；部署證據寫回狀態與交接文件。
+- 下一輪使用者回饋與未完成工作見 [STATUS.md](STATUS.md) 及 [交接](docs/HANDOFF.md)。
 
 ## 1.5.0 — 2026-11-06
 

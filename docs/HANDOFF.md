@@ -6,7 +6,19 @@
 
 兩輪閱讀／書架優化及本次文件建立已完成，等待使用者實際觀感回饋。先讀 `../AGENTS.md`、`../STATUS.md` 與 `../CHANGELOG.md`；不要回到 clone 時的 1.4.2 重新做一遍。
 
-最新使用者要求：補版本更新及突然中斷時的紀錄，連同程式保存到 GitHub，讓新電腦可接續。除文件外，前兩輪尚未 push 的程式與 5 個合成資料測試也應包含在同一輪同步中。
+最新使用者要求：以後每輪優化完成、驗證通過後直接部署既有 Site。程式、文件與 5 個測試已於 GitHub commit `b43b03a` 保存；本輪補入持續部署規則，並發布 1.5.0。當前部署中，成功後回填下方紀錄。
+
+## 每輪部署方式與目前狀態
+
+先看 AGENTS 的「每輪完成後直接部署」規則。GitHub 與 Sites 的來源倉庫是兩個同步目的地；推 GitHub 之後仍要透過 Sites 技能的 source helper 同步並打包，使用既有 project_id，不重新建站。
+
+- 線上網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
+- project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
+- 現有存取範圍：public；保留既有範圍，不自行改權限。
+- 本輪 1.5.0：部署中，待回填來源 commit／saved version ID／deployment ID 與終態。
+- `.sites-checkout/` 是被忽略的部署暫存 checkout，可重建；不要把憑證或其 Git metadata 放進 GitHub。
+
+部署成功後回填的純文字紀錄可以再 commit／push，不必為相同的程式重複部署。所有紀錄都應指出真正部署的來源 commit。
 
 ## 新電腦開始
 

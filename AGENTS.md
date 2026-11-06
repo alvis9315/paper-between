@@ -17,6 +17,15 @@
 - 本機固定 `npm run dev -- --port 4112 --strictPort`；port 正本在 WORKSPACE-SETUP。不要另佔預設 port 當常用入口。
 - 本 repo 沿用 `main`；不要自行建立新分支。GitHub 原始碼同步與網站部署分開，未實際部署就不要宣稱線上版已更新。
 
+## 每輪完成後直接部署（使用者已授權）
+
+- 2026-11-06 起，每輪優化完成並通過驗證後，必須 commit／push GitHub 並直接部署到既有 Site，不停在本機或只推 GitHub，也不再重問部署許可。
+- 沿用 `.openai/hosting.json` 的 project_id、既有網址與存取範圍；Site：<https://paper-between-alvis9315.javacj02004.chatgpt.site>。
+- 使用 Sites 技能／工具同步實際部署來源、建置打包、儲存版本與發布；GitHub push 不會自動更新 Site。不得另建 Site 取代既有站。
+- 部署後等到終態，記錄 URL、來源 commit、Site 版本 ID 與部署 ID 到 STATUS／交接。失敗或等待中必須如實標記，不得宣稱已上線。
+- 只有使用者當輪明確指定「只改本機／先不要部署／只存版本」時才略過發布。中斷的 WIP 不直接上線。
+- 部署成功後回填結果的純文件 commit 可單獨 push，不重複部署；文件須保留真正部署的來源 commit，避免把紀錄 commit 誤當部署來源。
+
 ## 驗證與版本
 
 - 交付前執行 `npm run build`（含 typecheck）；互動、版面、主題或測試變動再執行 `npm test`。
