@@ -1,12 +1,12 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.5.1**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.6.0**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-1.5.1 已完成並部署：翻頁控制不遮擋、放大鏡提示、首末頁圖示修正、放大工具列左縮放／中間翻頁與頁數，以及全站控制元件外觀統一。完整 build／7 個情境通過；夜間選單另補畫面與操作驗證。目前沒有未完成程式，等待使用者下一個回饋。
+1.6.0 已實作：指南 top layer 限高、全站捲軸活動顯示、書架 6／12／24 分頁與我的最愛、工具列 hover、搜尋框、等距操作、觸控板翻頁及備份格式引導。build 與完整 12 個情境已通過，正在同步與部署；成功前以部署紀錄中的既有線上版為準。
 
-新入口：`ChoiceSelect.vue`（共用選單，Popover top layer 避免彈窗／編輯器裁切）、`DisclosurePanel.vue`（提醒展開）、`tests/controls.spec.ts`（2 個新情境）、[UI 控制元件盤點](UI-CONTROLS.md)。保留有完整樣式的語意化 dialog／input 與原生鍵盤能力。
+新增入口：`ModalShell.vue`、`CollectionPagination.vue`、`core/scrollActivity.ts`。收藏使用 `BookRecord.favorite?: boolean`，`backup.ts` 在 JSON 與 ZIP manifest 保留欄位，舊檔預設 false。測試追加到既有三個 spec（共 12 情境），全部合成資料。
 
 ## 每輪部署方式與目前狀態
 
@@ -72,12 +72,14 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 | 翻頁、書頁頁碼、放大入口 | `src/components/BookView.vue`、`PageLeaf.vue` |
 | 跳頁與第一／最後一頁面板 | `src/components/PaginationBar.vue` |
 | 放大逐頁閱讀、縮放、獨立捲動 | `src/components/ReaderDetail.vue`、`PdfPage.vue` |
-| 書架卡片／條列、hover、搜尋、書卡操作 | `src/components/Bookshelf.vue` |
+| 書架卡片／條列、收藏、搜尋、書卡操作 | `src/components/Bookshelf.vue` |
+| 書架分頁／每頁數／跳頁 | `CollectionPagination.vue`、`Bookshelf.vue` |
+| 指南／備份彈窗及活動捲軸 | `ModalShell.vue`、`core/scrollActivity.ts`、`src/style.css` |
 | 圖示中文浮動標籤 | `src/components/IconAction.vue` |
 | 日夜色票、主題保存 | `src/theme.css`、`src/core/theme.ts` |
 | 分頁、位置、儲存、備份格式 | `src/core/pagination.ts`、`navigation.ts`、`storage.ts`、`backupBundle.ts` |
 
-最新決策：日夜共用可可棕 `#88634f` 與書封，夜間使用炭灰；書架頂部「我的書架」是位置標示；卡片／條列切換在搜尋旁。閱讀頁文字說明集中到指南／資訊，不增加常駐上下區塊。
+最新決策：日夜共用可可棕 `#88634f` 與書封，夜間使用炭灰；點品牌回書架，移除重複的頂部書架入口；卡片／條列切換在搜尋旁。閱讀頁文字說明集中到指南／資訊，不增加常駐上下區塊。
 
 ## 1.5.0 驗證證據（歷史）
 
@@ -95,7 +97,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-目前 1.5.1 已驗證、推上 GitHub 並部署成功，沒有半成品工作。下一輪中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
+1.6.0 build、12 個情境與 diff 檢查已通過，正在同步 GitHub／部署；成功回填前不可宣稱線上更新。下一輪中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei

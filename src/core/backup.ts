@@ -89,6 +89,7 @@ export function exportBackup(books: BookRecord[]): string {
       updatedAt: b.updatedAt,
       deletedAt: b.deletedAt,
       progress: b.progress,
+      favorite: b.favorite === true,
       position: {
         block: b.document.blocks.findIndex((x) => x.id === b.anchor.blockId),
         offset: b.anchor.offset,
@@ -162,6 +163,7 @@ export function importBackup(text: string): BookRecord[] {
     doc.warnings = Array.isArray(b.warnings)
       ? b.warnings.filter((w: unknown) => typeof w === "string").slice(0, 100)
       : [];
+    record.favorite = b.favorite === true;
     return record;
   });
 }

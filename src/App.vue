@@ -9,6 +9,7 @@ import {
   shallowRef,
   watch,
 } from "vue";
+import ModalShell from "./components/ModalShell.vue";
 import AppIcon from "./components/AppIcon.vue";
 import DisclosurePanel from "./components/DisclosurePanel.vue";
 import IconAction from "./components/IconAction.vue";
@@ -23,7 +24,6 @@ import {
   Upload,
   FileText,
   Highlighter,
-  Grid2X2,
   CircleHelp,
   Info,
   Sun,
@@ -85,6 +85,9 @@ const detailPage = ref<number>();
 const infoOpen = ref(false);
 const importOpen = ref(false);
 const helpOpen = ref(false);
+const backupImportOpen = ref(false);
+const backupError = ref("");
+const backupFileName = ref("");
 const textOpen = ref(false);
 const shelfOpen = ref(false);
 const editorOpen = ref(false);
@@ -371,27 +374,53 @@ async function downloadBackup(id?: string) {
     backupWorking.value = false;
   }
 }
+function toggleFavorite(id: string) {
+  books.value = books.value.map((b) =>
+    b.document.id === id ? { ...b, favorite: !b.favorite } : b,
+  );
+  dirtyIds.add(id);
+  queueSave();
+}
+function openBackupImport() {
+  backupError.value = "";
+  backupFileName.value = "";
+  backupImportOpen.value = true;
+}
 async function restoreBackupFile(e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
-  if (!file || busy.value || backupWorking.value) return;
+  if (file) await restoreBackup(file);
+  input.value = "";
+}
+async function restoreBackup(file: File) {
+  if (busy.value || backupWorking.value) return;
+  backupImportOpen.value = true;
+  backupFileName.value = file.name;
+  backupError.value = "";
   backupWorking.value = true;
   try {
-    notify("正在檢查備份與媒體完整性，請稍候…");
+    if (!/\.(zip|json)$/i.test(file.name)) {
+      const hint = /\.pdf$/i.test(file.name)
+        ? "PDF 請使用書架的「匯入 PDF」。"
+        : /\.docx?$/i.test(file.name)
+          ? "Word 請使用書架的「匯入 Word」。"
+          : "請選擇由頁白「備份書架」或「備份此本」下載的 ZIP。";
+      throw new Error(`這個檔案不是書架備份。${hint}`);
+    }
     const restored = await readBundle(file);
     books.value = [...books.value, ...restored];
     restored.forEach((b) => dirtyIds.add(b.document.id));
     queueSave();
     restoreTheme(restored.settings?.theme);
+    backupImportOpen.value = false;
     notify(`已加入 ${restored.length} 本備份筆記，原有書架完整保留。`);
   } catch (e) {
-    notify(
-      e instanceof Error ? e.message : "匯入備份失敗，原有書架已保留。",
-      true,
-    );
+    backupError.value =
+      e instanceof Error
+        ? e.message
+        : "無法讀取備份。請重新下載完整備份後再試。";
   } finally {
     backupWorking.value = false;
-    input.value = "";
   }
 }
 async function saveEdited(candidate: Notebook) {
@@ -606,7 +635,7 @@ function pickFile(e: Event) {
 }
 function dropFile(e: DragEvent) {
   dragOver.value = false;
-  if (editorOpen.value || textOpen.value) return;
+  if (editorOpen.value || textOpen.value || backupImportOpen.value) return;
   if (e.dataTransfer?.files.length) void loadFile(e.dataTransfer.files[0]);
 }
 async function createTextNotebook(
@@ -812,12 +841,18 @@ onBeforeUnmount(() => {
       dragOver =
         !editorOpen &&
         !textOpen &&
+        !backupImportOpen &&
         !!$event.dataTransfer?.types.includes('Files')
     "
     @drop.prevent="dropFile"
   >
     <header class="site-header">
-      <a class="brand" href="#" aria-label="頁白首頁" @click.prevent="showShelf"
+      <a
+        class="brand"
+        href="#"
+        aria-label="頁白首頁"
+        :aria-disabled="busy || turning"
+        @click.prevent="showShelf"
         ><span class="brand-mark"><AppIcon name="book" :size="25" /></span
         ><span class="brand-name">頁白</span
         ><span v-if="shelfOpen" class="brand-subtitle"
@@ -908,13 +943,6 @@ onBeforeUnmount(() => {
         />
         <IconAction
           compact
-          :icon="Grid2X2"
-          label="我的書架"
-          :disabled="busy || turning"
-          @click="showShelf"
-        />
-        <IconAction
-          compact
           :icon="CircleHelp"
           label="閱讀指南"
           @click="helpOpen = true"
@@ -933,10 +961,7 @@ onBeforeUnmount(() => {
             ><AppIcon name="moon" :size="17"
           /></span>
         </button>
-        <span class="quiet-button shelf-indicator" aria-current="page">
-          <AppIcon name="grid" :size="17" />我的書架
-          <span>{{ books.filter((b) => !b.deletedAt).length }}</span> </span
-        ><button class="quiet-button help-button" @click="helpOpen = true">
+        <button class="quiet-button help-button" @click="helpOpen = true">
           <AppIcon name="help" :size="17" /><span>閱讀指南</span>
         </button>
       </div>
@@ -956,7 +981,8 @@ onBeforeUnmount(() => {
       "
       @backup="downloadBackup"
       @backup-one="downloadBackup"
-      @restore-backup="backupInput?.click()"
+      @restore-backup="openBackupImport"
+      @favorite="toggleFavorite"
       @rename="renameBook"
       @duplicate="duplicateBook"
       @trash="trashBook"
@@ -1243,7 +1269,7 @@ onBeforeUnmount(() => {
     ></Transition>
 
     <div
-      v-if="importOpen || helpOpen"
+      v-if="importOpen"
       class="modal-backdrop"
       @click.self="
         importOpen = false;
@@ -1254,7 +1280,7 @@ onBeforeUnmount(() => {
         class="dialog"
         role="dialog"
         aria-modal="true"
-        :aria-label="importOpen ? '匯入 Word 文件' : '閱讀指南'"
+        aria-label="匯入 Word 文件"
       >
         <button
           class="dialog-close icon-button"
@@ -1297,40 +1323,91 @@ onBeforeUnmount(() => {
             新文件成功解析與排版後會建立新的一本，原有筆記保留在書架。
           </p></template
         >
-        <template v-else
-          ><span class="dialog-emblem"><AppIcon name="book" :size="28" /></span>
-          <h2>慢一點，讀得更清楚。</h2>
-          <p>頁白會依照你的螢幕，自動把內容排入固定紙頁。</p>
-          <ul class="help-list">
-            <li>點擊書本兩側箭頭，或使用 ← → 翻頁。</li>
-            <li>手機左右輕滑可翻頁；長按仍可選取文字。</li>
-            <li>
-              書頁右下角可放大閱讀細節；放大視窗可捲動、調整倍率與逐頁切換。
-            </li>
-            <li>使用搜尋找整本筆記，點結果會跳到命中頁。</li>
-            <li>點書頁底部頁碼，可輸入頁碼或前往第一頁／最後一頁。</li>
-            <li>文件與閱讀位置儲存在目前瀏覽器；清除網站資料會移除筆記。</li>
-            <li>匯入與貼上預設建立新的一本；貼上也能選擇追加到目前筆記。</li>
-            <li>
-              「我的書架」可以切換、重新命名、複製及移除筆記；回收桶可還原。
-            </li>
-            <li>請定期下載書架備份；匯入備份會加入書架並保留原有筆記。</li>
-            <li>
-              「圖文筆記」可持續加入多張圖片；PNG/JPEG/WebP 每張原檔上限
-              10MB，自動縮圖，每本最多 50 張。
-            </li>
-            <li>
-              選取文字可分類畫重點，在「重點筆記」加入標籤和心得；備份會包含圖片、PDF
-              與重點。
-            </li>
-            <li>
-              PDF 上限 10MB、200
-              頁，保留原頁面與圖片；掃描頁無文字層時無法搜尋，尚未提供 OCR。
-            </li>
-          </ul></template
-        >
       </section>
     </div>
+    <ModalShell v-if="helpOpen" title="閱讀指南" @close="helpOpen = false">
+      <p>書頁依螢幕自動排版，把空間留給閱讀。</p>
+      <h3>翻頁與細節</h3>
+      <ul>
+        <li>
+          點兩側箭頭、使用 ← →，或在 Mac
+          觸控板以兩指橫向滑動翻頁；手機可左右輕滑。
+        </li>
+        <li>點書頁底部頁碼，直接跳頁或前往首末頁。</li>
+        <li>
+          右下角放大鏡開啟細節閱讀，可捲動、縮放及切換頁面。搜尋可找到整本筆記中的文字。
+        </li>
+      </ul>
+      <h3>整理書架</h3>
+      <ul>
+        <li>
+          點左上「頁白」回書架。可切換卡片／條列、搜尋名稱、分頁、重新命名或複製筆記。
+        </li>
+        <li>點星星收藏到「我的最愛」；移除的筆記可在回收桶還原。</li>
+        <li>
+          匯入與貼上預設建立新的一本；貼上也能追加到目前筆記。選取文字可分類畫重點，加入標籤及心得。
+        </li>
+      </ul>
+      <h3>檔案與保存</h3>
+      <ul>
+        <li>
+          筆記存在目前瀏覽器；清除網站資料會移除筆記。請定期備份，換電腦時直接匯入
+          ZIP，不需解壓縮；也相容舊版 JSON。
+        </li>
+        <li>
+          備份包含圖片、PDF、重點、我的最愛、回收桶與閱讀位置；匯入會加入書架，保留原有筆記。
+        </li>
+        <li>
+          Word／PDF 上限 10MB；PDF 最多 200
+          頁，掃描頁沒有文字層時無法搜尋，目前沒有 OCR。
+        </li>
+        <li>
+          圖文筆記支援 PNG／JPEG／WebP，每張原檔上限 10MB、自動縮圖，每本最多 50
+          張。
+        </li>
+      </ul>
+    </ModalShell>
+    <ModalShell
+      v-if="backupImportOpen"
+      title="匯入書架備份"
+      :busy="backupWorking"
+      @close="backupImportOpen = false"
+    >
+      <p>
+        直接選擇頁白匯出的 <strong>ZIP 備份</strong>，不需要解壓縮。也可匯入舊版
+        JSON。
+      </p>
+      <p>筆記、圖片、PDF、重點及我的最愛會加入這個書架，原有筆記會保留。</p>
+      <div v-if="backupError" class="backup-import-error" role="alert">
+        <strong>無法匯入 {{ backupFileName }}</strong>
+        <p>{{ backupError }}</p>
+        <p>
+          尚未加入任何內容，原有書架完整保留。請確認是頁白下載的完整備份，或重新選擇檔案。
+        </p>
+      </div>
+      <button
+        class="drop-zone"
+        :disabled="backupWorking"
+        @click="backupInput?.click()"
+        @dragover.prevent.stop
+        @drop.prevent.stop="
+          $event.dataTransfer?.files[0] &&
+          restoreBackup($event.dataTransfer.files[0])
+        "
+      >
+        <AppIcon name="upload" :size="28" /><strong>{{
+          backupWorking
+            ? "正在檢查備份…"
+            : backupError
+              ? "重新選擇備份"
+              : "選擇備份，或拖曳到這裡"
+        }}</strong
+        ><span>頁白 ZIP · 舊版 JSON</span>
+      </button>
+      <p class="dialog-footnote">
+        Word 與 PDF 文件請使用書架上對應的匯入按鈕。
+      </p>
+    </ModalShell>
     <div
       v-if="dragOver"
       class="global-drop"

@@ -899,7 +899,6 @@ main {
   border-top: 1px solid var(--line, #e5dcd4);
   padding-top: 5px;
   scrollbar-width: thin;
-  scrollbar-color: #cabbad transparent;
 }
 .search-result {
   width: 100%;
@@ -2575,4 +2574,51 @@ input:is([type="checkbox"], [type="radio"]):disabled {
 .loading-overlay progress::-moz-progress-bar {
   background: var(--accent);
   border-radius: 999px;
+}
+
+/* A dialog always covers the sticky toolbar; only its contents scroll. */
+.modal-backdrop {
+  z-index: 100;
+  overscroll-behavior: contain;
+}
+body:has(dialog[open]),
+body:has(.modal-backdrop) {
+  overflow: hidden;
+}
+.backup-import-error {
+  padding: 14px;
+  margin: 14px 0;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--danger) 6%, var(--field));
+  overflow-wrap: anywhere;
+}
+.backup-import-error strong {
+  color: var(--danger);
+}
+/* Keep geometry stable; reveal thumbs only while this element is scrolling. */
+*,
+*::before,
+*::after {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.is-scrolling {
+  scrollbar-color: var(--border-strong, #aa9383) transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 6px;
+}
+.is-scrolling::-webkit-scrollbar-thumb {
+  background: var(--border-strong, #aa9383);
 }

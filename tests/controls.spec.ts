@@ -224,3 +224,46 @@ test("custom controls cover highlights, editor layout, disclosure and check/radi
   await page.getByRole("button", { name: "關閉編輯", exact: true }).click();
   expect(errors).toEqual([]);
 });
+
+test("reading guide stays above the header, fits short windows and shows scrollbar only during scrolling", async ({
+  page,
+}) => {
+  await reading(page);
+  for (const viewport of [
+    { width: 1440, height: 480 },
+    { width: 320, height: 568 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expect(page.locator(".book-workspace")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+    await page.getByRole("button", { name: "閱讀指南", exact: true }).click();
+    const guide = page.getByRole("dialog", { name: "閱讀指南", exact: true });
+    await expect(guide).toBeVisible();
+    const box = await guide.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(19);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height - 19);
+    await expect(
+      guide.getByRole("button", { name: "關閉閱讀指南" }),
+    ).toBeInViewport();
+    const content = guide.locator(".bounded-modal-body");
+    expect(
+      await content.evaluate((el) => el.scrollHeight > el.clientHeight),
+    ).toBe(true);
+    await expect(content).not.toHaveClass(/is-scrolling/);
+    expect(
+      await content.evaluate((el) => getComputedStyle(el).scrollbarColor),
+    ).toBe("rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)");
+    await content.hover();
+    await page.mouse.wheel(0, 230);
+    await expect(content).toHaveClass(/is-scrolling/);
+    expect(
+      await content.evaluate((el) => getComputedStyle(el).scrollbarColor),
+    ).not.toBe("rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)");
+    await expect(content).not.toHaveClass(/is-scrolling/);
+    await page.screenshot({ path: `test-results/guide-${viewport.width}.png` });
+    await page.keyboard.press("Escape");
+    await expect(guide).toHaveCount(0);
+  }
+});

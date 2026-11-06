@@ -196,7 +196,7 @@ test("text reading fits desktop, mobile, small height; search, jump and enlarged
     "data-page",
     "3",
   );
-  await page.getByRole("button", { name: "我的書架", exact: true }).click();
+  await page.getByRole("link", { name: "頁白首頁", exact: true }).click();
   const padding = await page.locator("main.bookshelf-page").evaluate((el) => ({
     main:
       el.getBoundingClientRect().left +
@@ -372,4 +372,33 @@ test("touch toolbar, swipes, highlights and restored reading position", async ({
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await assertViewport(page);
   await context.close();
+});
+
+test("horizontal trackpad wheel flips one spread per gesture and ignores vertical scrolling and pinch", async ({
+  page,
+}) => {
+  await seedText(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const first = page.locator(".book-pages > .paper").first();
+  await page.locator(".book-shell").hover();
+  await page.mouse.wheel(0, 300);
+  await expect(first).toHaveAttribute("data-page", "1");
+  await page
+    .locator(".book-shell")
+    .dispatchEvent("wheel", { deltaX: 200, deltaY: 0, ctrlKey: true });
+  await expect(first).toHaveAttribute("data-page", "1");
+  await page.mouse.wheel(120, 4);
+  await expect(first).toHaveAttribute("data-page", "3");
+  for (let i = 0; i < 8; i++) {
+    await page.mouse.wheel(100, 2);
+    await page.waitForTimeout(100);
+  }
+  await expect(first).toHaveAttribute("data-page", "3");
+  await page.waitForTimeout(350);
+  await page.mouse.wheel(-120, 0);
+  await expect(first).toHaveAttribute("data-page", "1");
+  await page.waitForTimeout(750);
+  await page.mouse.wheel(-120, 0);
+  await expect(first).toHaveAttribute("data-page", "1");
+  expect(await page.evaluate(() => scrollX)).toBe(0);
 });

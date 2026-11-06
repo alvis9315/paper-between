@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
+import ChoiceSelect from "./ChoiceSelect.vue";
+import CollectionPagination from "./CollectionPagination.vue";
 import AppIcon from "./AppIcon.vue";
 import IconAction from "./IconAction.vue";
 import {
@@ -11,6 +13,7 @@ import {
   RotateCcw,
   SquarePen,
   Trash2,
+  Star,
 } from "@lucide/vue";
 import type { BookRecord } from "../core/model";
 const props = defineProps<{
@@ -32,6 +35,7 @@ const emit = defineEmits<{
   trash: [id: string];
   restore: [id: string];
   back: [];
+  favorite: [id: string];
 }>();
 const viewKey = "paper-between-shelf-view";
 function savedView(): "grid" | "list" {
@@ -49,15 +53,41 @@ watch(view, (value) => {
     /* Switching views still works when browser storage is unavailable. */
   }
 });
-const trash = ref(false);
+const tab = ref<"notes" | "favorites" | "trash">("notes");
+const trash = computed(() => tab.value === "trash");
+const sizeKey = "paper-between-shelf-page-size";
+function savedSize() {
+  try {
+    const value = Number(localStorage.getItem(sizeKey));
+    return [6, 12, 24].includes(value) ? value : 12;
+  } catch {
+    return 12;
+  }
+}
+const pageSize = ref(savedSize());
+const page = ref(1);
+const filters = ref<HTMLElement>();
+watch(pageSize, (value) => {
+  try {
+    localStorage.setItem(sizeKey, String(value));
+  } catch {
+    /* Local preference is optional. */
+  }
+});
 const query = ref("");
 const editing = ref<string>();
 const renameValue = ref("");
 const renameError = ref("");
 const alive = computed(() => props.books.filter((b) => !b.deletedAt));
 const deleted = computed(() => props.books.filter((b) => b.deletedAt));
+const favorites = computed(() => alive.value.filter((b) => b.favorite));
 const visible = computed(() =>
-  (trash.value ? deleted.value : alive.value)
+  (trash.value
+    ? deleted.value
+    : tab.value === "favorites"
+      ? favorites.value
+      : alive.value
+  )
     .filter((b) =>
       b.document.title
         .toLocaleLowerCase()
@@ -67,6 +97,27 @@ const visible = computed(() =>
       (a, b) => (b.deletedAt || b.updatedAt) - (a.deletedAt || a.updatedAt),
     ),
 );
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(visible.value.length / pageSize.value)),
+);
+const pageBooks = computed(() =>
+  visible.value.slice(
+    (page.value - 1) * pageSize.value,
+    page.value * pageSize.value,
+  ),
+);
+watch([query, tab, pageSize], () => {
+  page.value = 1;
+  editing.value = undefined;
+});
+watch(totalPages, (total) => {
+  page.value = Math.min(page.value, total);
+});
+watch(page, async () => {
+  editing.value = undefined;
+  await nextTick();
+  filters.value?.scrollIntoView({ block: "start" });
+});
 function preview(b: BookRecord) {
   return b.document.blocks
     .filter((x) => x.kind !== "heading")
@@ -115,7 +166,7 @@ function rename(id: string) {
     </section>
     <div class="shelf-toolbar">
       <div class="shelf-primary-actions">
-        <button class="import-button" :disabled="busy" @click="emit('create')">
+        <button class="toolbar-button" :disabled="busy" @click="emit('create')">
           <AppIcon name="edit" :size="17" />新增筆記</button
         ><button
           class="toolbar-button"
@@ -159,11 +210,16 @@ function rename(id: string) {
         </button>
       </div>
     </div>
-    <div class="shelf-filter">
+    <div ref="filters" class="shelf-filter">
       <div class="shelf-tabs">
-        <button :class="{ active: !trash }" @click="trash = false">
+        <button :class="{ active: tab === 'notes' }" @click="tab = 'notes'">
           我的筆記 <span>{{ alive.length }}</span></button
-        ><button :class="{ active: trash }" @click="trash = true">
+        ><button
+          :class="{ active: tab === 'favorites' }"
+          @click="tab = 'favorites'"
+        >
+          我的最愛 <span>{{ favorites.length }}</span></button
+        ><button :class="{ active: trash }" @click="tab = 'trash'">
           回收桶 <span>{{ deleted.length }}</span>
         </button>
       </div>
@@ -174,6 +230,14 @@ function rename(id: string) {
             placeholder="搜尋筆記名稱"
             aria-label="搜尋筆記名稱"
         /></label>
+        <ChoiceSelect
+          v-model="pageSize"
+          :disabled="busy"
+          label="每頁顯示筆記數"
+          :options="
+            [6, 12, 24].map((value) => ({ value, label: `每頁 ${value} 本` }))
+          "
+        />
         <div class="shelf-view-toggle" role="group" aria-label="書架顯示方式">
           <IconAction
             compact
@@ -199,10 +263,12 @@ function rename(id: string) {
       v-if="visible.length"
       class="shelf-grid"
       :class="{ 'shelf-list': view === 'list' }"
-      :aria-label="trash ? '回收桶筆記' : '我的筆記'"
+      :aria-label="
+        trash ? '回收桶筆記' : tab === 'favorites' ? '我的最愛' : '我的筆記'
+      "
     >
       <article
-        v-for="(b, n) in visible"
+        v-for="(b, n) in pageBooks"
         :key="b.document.id"
         class="book-card"
         :data-book-id="b.document.id"
@@ -265,6 +331,16 @@ function rename(id: string) {
           :aria-label="`《${b.document.title}》的筆記操作`"
         >
           <IconAction
+            v-if="!trash"
+            :icon="Star"
+            :label="b.favorite ? '移除我的最愛' : '加入我的最愛'"
+            :touch-label="b.favorite ? '已收藏' : '收藏'"
+            :aria-pressed="!!b.favorite"
+            :class="{ 'favorite-selected': b.favorite }"
+            :disabled="busy"
+            @click="emit('favorite', b.document.id)"
+          />
+          <IconAction
             :icon="Download"
             label="備份此本"
             :disabled="busy"
@@ -286,6 +362,7 @@ function rename(id: string) {
             <IconAction
               :icon="Trash2"
               label="移到回收桶"
+              touch-label="移除"
               :disabled="busy"
               danger
               @click="emit('trash', b.document.id)"
@@ -309,7 +386,9 @@ function rename(id: string) {
             ? "找不到這本筆記"
             : trash
               ? "回收桶目前是空的"
-              : "留一個位置，給新的想法。"
+              : tab === "favorites"
+                ? "把喜歡的筆記，留在這裡。"
+                : "留一個位置，給新的想法。"
         }}
       </h2>
       <p>
@@ -318,11 +397,13 @@ function rename(id: string) {
             ? "試試其他名稱，或清除搜尋。"
             : trash
               ? "移除的筆記會先保留在這裡。"
-              : "這是你的空白書架。匯入 PDF、Word、書架備份，或自行新增圖文與文字筆記。"
+              : tab === "favorites"
+                ? "點筆記下方的星星，就能加入我的最愛。"
+                : "這是你的空白書架。匯入 PDF、Word、書架備份，或自行新增圖文與文字筆記。"
         }}
       </p>
       <button
-        v-if="!trash && !query"
+        v-if="tab === 'notes' && !query"
         class="import-button"
         :disabled="busy"
         @click="emit('create')"
@@ -330,6 +411,13 @@ function rename(id: string) {
         新增第一本筆記
       </button>
     </section>
+    <CollectionPagination
+      v-if="totalPages > 1"
+      v-model="page"
+      :total="visible.length"
+      :page-size="pageSize"
+      :disabled="busy"
+    />
     <p class="shelf-local-note">
       <AppIcon
         name="shield"
@@ -855,6 +943,88 @@ function rename(id: string) {
   }
   .book-open:not(:disabled):is(:hover, :focus-visible, :active) .mini-book {
     transform: none;
+  }
+}
+/* Spacious search and controls; equal edge and inter-button gaps. */
+.shelf-filter {
+  flex-direction: column;
+  align-items: stretch;
+  scroll-margin-top: 110px;
+}
+.shelf-display-tools {
+  width: 100%;
+  gap: 12px;
+}
+.shelf-search {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--field);
+}
+.shelf-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.shelf-search input {
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+  min-height: 36px;
+  outline: none;
+}
+.shelf-toolbar .toolbar-button {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: none;
+  border-color: transparent;
+}
+.shelf-toolbar .toolbar-button:not(:disabled):is(:hover, :focus-visible) {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.book-card-actions,
+.shelf-list .book-card-actions {
+  justify-content: space-evenly;
+  gap: 0;
+  padding: 8px 0;
+}
+.shelf-list .book-card-actions {
+  width: 270px;
+}
+:deep(.favorite-selected svg) {
+  fill: var(--accent);
+  color: var(--accent-ink, var(--accent));
+}
+@media (max-width: 700px) {
+  .shelf-list .book-card-actions {
+    width: 100%;
+  }
+}
+@media (max-width: 540px) {
+  .shelf-display-tools {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .shelf-search {
+    flex-basis: 100%;
+  }
+  .shelf-tabs {
+    gap: 13px;
+  }
+  .shelf-tabs button {
+    font-size: 12px;
+  }
+  .shelf-tabs button > span {
+    margin-left: 2px;
+    padding: 2px 4px;
+  }
+  .book-card-actions :deep(.icon-action-button) {
+    width: 44px;
+  }
+  .book-card-actions :deep(.touch-action-label) {
+    font-size: 9px;
   }
 }
 </style>

@@ -119,7 +119,49 @@ function touchEnd(e: TouchEvent) {
     move(dx < 0 ? 1 : -1);
   touch = undefined;
 }
-onBeforeUnmount(() => clearTimeout(timer));
+let wheelTimer: ReturnType<typeof setTimeout> | undefined;
+let wheelDistance = 0;
+let wheelLocked = false;
+let lastWheelTurn = -Infinity;
+function wheel(e: WheelEvent) {
+  if (
+    e.ctrlKey ||
+    e.metaKey ||
+    e.altKey ||
+    window.getSelection()?.toString() ||
+    (e.target as HTMLElement).closest('input,textarea,[contenteditable="true"]')
+  )
+    return;
+  const scale =
+    e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerWidth : 1;
+  const dx = e.deltaX * scale,
+    dy = e.deltaY * scale;
+  if (Math.abs(dx) < 0.5 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+  // Consume horizontal history navigation, including at the first/last spread.
+  e.preventDefault();
+  clearTimeout(wheelTimer);
+  wheelTimer = setTimeout(() => {
+    wheelDistance = 0;
+    wheelLocked = false;
+  }, 240);
+  if (
+    wheelLocked ||
+    props.disabled ||
+    turn.value ||
+    performance.now() - lastWheelTurn < 700
+  )
+    return;
+  wheelDistance =
+    Math.sign(wheelDistance) !== Math.sign(dx) ? dx : wheelDistance + dx;
+  if (Math.abs(wheelDistance) < 80) return;
+  wheelLocked = true;
+  lastWheelTurn = performance.now();
+  move(wheelDistance > 0 ? 1 : -1);
+}
+onBeforeUnmount(() => {
+  clearTimeout(timer);
+  clearTimeout(wheelTimer);
+});
 </script>
 <template>
   <div
@@ -128,6 +170,7 @@ onBeforeUnmount(() => clearTimeout(timer));
     @touchstart.passive="touchStart"
     @touchend.passive="touchEnd"
     @touchcancel="touch = undefined"
+    @wheel="wheel"
   >
     <div class="book-cover"></div>
     <div class="book-pages">

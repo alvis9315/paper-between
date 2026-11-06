@@ -23,6 +23,7 @@ const props = defineProps<{
   compact?: boolean;
   small?: boolean;
   label: string;
+  touchLabel?: string;
   icon: Component;
   disabled?: boolean;
   danger?: boolean;
@@ -147,7 +148,9 @@ onBeforeUnmount(hide);
         aria-hidden="true"
         focusable="false"
       />
-      <span class="touch-action-label" aria-hidden="true">{{ label }}</span>
+      <span class="touch-action-label" aria-hidden="true">{{
+        touchLabel || label
+      }}</span>
     </button>
     <Teleport to="body">
       <Transition

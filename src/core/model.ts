@@ -52,6 +52,7 @@ export interface BookRecord extends SavedState {
   createdAt: number;
   updatedAt: number;
   deletedAt?: number;
+  favorite?: boolean;
   progress: number;
 }
 export interface LibraryState {
