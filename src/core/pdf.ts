@@ -1,5 +1,5 @@
-import * as pdfjs from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import { getMedia, stageAsset } from "./media";
 import type { Notebook } from "./model";
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -20,6 +20,8 @@ export function loading(data: Uint8Array) {
     standardFontDataUrl: base + "standard_fonts/",
     wasmUrl: base + "wasm/",
     enableXfa: false,
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
     useSystemFonts: true,
     canvasMaxAreaInBytes: 32 * 1024 * 1024,
     verbosity: 0,

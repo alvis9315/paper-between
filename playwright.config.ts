@@ -8,11 +8,13 @@ export default defineConfig({
   outputDir: "./test-results",
   use: {
     baseURL: "http://127.0.0.1:4112",
-    browserName: "chromium",
-    channel: "chrome",
     headless: true,
     viewport: { width: 1440, height: 1000 },
   },
+  projects: [
+    { name: "chrome", use: { browserName: "chromium", channel: "chrome" } },
+    { name: "webkit", use: { browserName: "webkit" } },
+  ],
   webServer: {
     command: "npm run dev -- --port 4112 --strictPort",
     url: "http://127.0.0.1:4112",

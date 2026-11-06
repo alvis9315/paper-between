@@ -8,7 +8,7 @@
 
 線上入口：<https://paper-between-alvis9315.javacj02004.chatgpt.site>。每輪優化完成、驗證通過後，直接同步 GitHub 並部署既有 Site；實際部署狀態與來源 commit 見 [STATUS.md](STATUS.md)。
 
-目前原始碼版本：**1.6.1**。換電腦或換 agent 時，先讀下列文件：
+目前原始碼版本：**1.6.2**。換電腦或換 agent 時，先讀下列文件：
 
 | 文件 | 用途 |
 |---|---|
@@ -89,6 +89,6 @@ npm run preview
 
 第三方套件授權會在建置時彙整到 `dist/third-party-notices.txt`。
 
-`tests/reader.spec.ts`、`tests/shelf.spec.ts` 與 `tests/controls.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF，不含私人筆記。安裝 Google Chrome 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
+`tests/reader.spec.ts`、`tests/shelf.spec.ts` 與 `tests/controls.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF，不含私人筆記。安裝 Google Chrome 並執行 `npm exec playwright install webkit` 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
 
 PDF／Word 內容重組的現況、限制與後續方案見 [文件重排評估](docs/DOCUMENT-REFLOW.md)；目前 PDF 仍為原貌閱讀，尚未提供智慧重排。

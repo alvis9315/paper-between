@@ -1,12 +1,14 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.6.1**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.6.2**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-1.6.1：修正按鈕跨書框、減半閱讀器與紙頁內左右間距。桌機完整書外導覽，窄螢幕使用頁腳頁碼兩旁。`src/style.css` 同時調整量測頁與實際頁；`tests/controls.spec.ts` 增加 2868／1440／1024／820／819／390／320px 不重疊驗證。build、完整 12 個情境及 diff 檢查通過，GitHub 同步及 Sites 部署成功。
+使用者要求先修手機搜尋放大、PDF 白頁、工具列／書架高佔位，再做 PDF 重排與考前小卡。1.6.2 build 與 28 個 Chrome／WebKit 執行個案已通過，正在部署。手機為 Safari 26.0.1；沒有原始兩份 PDF，未重現個別檔案根因。
 
-PDF／Word 的新需求先做技術評估，尚未實作語意重排。詳見 [文件重排評估](DOCUMENT-REFLOW.md)：保留原貌＋可校正區塊，圖解保持群組，正文用可讀字級重排，超高續頁，低信心退回原貌。若後續實作，先取得原始 PDF／DOCX 驗證圖像／文字／向量成分，不能只憑截圖承諾效果。
+PDF 改 legacy build／worker、低畫布預算、繪圖排隊，選字層可獨立失敗；錯誤保留診斷、重試與原檔。手機搜尋至少 16px 且依 visualViewport／dvh 限高，不禁用 pinch zoom；手機選單用有主題樣式的 Popover，搜尋留外。WebKit 自訂選單加明確 focus。
+
+接續：先讓 build 與 Chrome／WebKit 28 個執行個案通過並部署 1.6.2，再實作 [文件重排第一階段](DOCUMENT-REFLOW.md)（圖解保留＋正文可重排、另建筆記）與獨立小卡（單卡滑動、主題標籤、搜尋結果卡組與快速跳轉、可校正標題／主題）。
 
 ## 每輪部署方式與目前狀態
 

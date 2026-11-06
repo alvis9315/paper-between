@@ -149,65 +149,69 @@ function rename(id: string) {
 </script>
 <template>
   <main class="bookshelf-page">
-    <section class="shelf-heading">
-      <div>
-        <div class="eyebrow"><span></span> 你的私人藏書</div>
-        <h1>我的書架</h1>
-        <p>每一本筆記，都留著一段自己的思考。</p>
-      </div>
-      <button
-        v-if="activeId"
-        class="toolbar-button"
-        :disabled="busy"
-        @click="emit('back')"
-      >
-        <AppIcon name="book" />回到閱讀
-      </button>
-    </section>
-    <div class="shelf-toolbar">
-      <div class="shelf-primary-actions">
-        <button class="toolbar-button" :disabled="busy" @click="emit('create')">
-          <AppIcon name="edit" :size="17" />新增筆記</button
-        ><button
-          class="toolbar-button"
-          :disabled="busy"
-          @click="emit('importWord')"
-        >
-          <AppIcon name="upload" />匯入 Word
-        </button>
+    <div class="shelf-overview">
+      <section class="shelf-heading">
+        <div>
+          <h1>我的書架</h1>
+        </div>
         <button
+          v-if="activeId"
           class="toolbar-button"
           :disabled="busy"
-          @click="emit('importPdf')"
+          @click="emit('back')"
         >
-          <AppIcon name="file" />匯入 PDF
+          <AppIcon name="book" />回到閱讀
         </button>
-        <button
-          class="toolbar-button"
-          :disabled="busy"
-          @click="emit('createRich')"
-        >
-          <AppIcon name="image" />圖文筆記
-        </button>
-      </div>
-      <div class="shelf-backup-actions">
-        <button
-          class="toolbar-button"
-          :disabled="busy || !books.length"
-          @click="emit('backup')"
-        >
-          <AppIcon name="download" :size="16" />備份書架</button
-        ><button
-          class="toolbar-button"
-          :disabled="busy"
-          @click="emit('restoreBackup')"
-        >
-          <ArchiveRestore
-            :size="17"
-            :stroke-width="1.7"
-            aria-hidden="true"
-          />匯入備份
-        </button>
+      </section>
+      <div class="shelf-toolbar">
+        <div class="shelf-primary-actions">
+          <button
+            class="toolbar-button"
+            :disabled="busy"
+            @click="emit('create')"
+          >
+            <AppIcon name="edit" :size="17" />新增筆記</button
+          ><button
+            class="toolbar-button"
+            :disabled="busy"
+            @click="emit('importWord')"
+          >
+            <AppIcon name="upload" />匯入 Word
+          </button>
+          <button
+            class="toolbar-button"
+            :disabled="busy"
+            @click="emit('importPdf')"
+          >
+            <AppIcon name="file" />匯入 PDF
+          </button>
+          <button
+            class="toolbar-button"
+            :disabled="busy"
+            @click="emit('createRich')"
+          >
+            <AppIcon name="image" />圖文筆記
+          </button>
+        </div>
+        <div class="shelf-backup-actions">
+          <button
+            class="toolbar-button"
+            :disabled="busy || !books.length"
+            @click="emit('backup')"
+          >
+            <AppIcon name="download" :size="16" />備份書架</button
+          ><button
+            class="toolbar-button"
+            :disabled="busy"
+            @click="emit('restoreBackup')"
+          >
+            <ArchiveRestore
+              :size="17"
+              :stroke-width="1.7"
+              aria-hidden="true"
+            />匯入備份
+          </button>
+        </div>
       </div>
     </div>
     <div ref="filters" class="shelf-filter">
@@ -1025,6 +1029,52 @@ function rename(id: string) {
   }
   .book-card-actions :deep(.touch-action-label) {
     font-size: 9px;
+  }
+}
+
+.shelf-overview {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.shelf-overview .shelf-heading {
+  margin: 0;
+  flex-shrink: 0;
+  gap: 12px;
+}
+.shelf-heading h1 {
+  font-size: 26px;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+.shelf-overview .shelf-toolbar {
+  flex: 1;
+  min-width: min(100%, 650px);
+  padding: 8px;
+}
+@media (max-width: 819px) {
+  .shelf-overview {
+    gap: 14px;
+  }
+  .shelf-overview .shelf-heading {
+    width: 100%;
+  }
+  .shelf-heading .toolbar-button {
+    margin: 0;
+  }
+  .shelf-overview .shelf-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .shelf-primary-actions,
+  .shelf-backup-actions {
+    display: contents;
+  }
+  .shelf-toolbar .toolbar-button {
+    justify-content: flex-start;
+    min-height: 44px;
+    font-size: 13px;
   }
 }
 </style>

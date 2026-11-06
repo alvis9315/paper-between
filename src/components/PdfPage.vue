@@ -40,18 +40,42 @@ function paint() {
   parsed.innerHTML = html;
   layer.value.innerHTML = parsed.firstElementChild!.innerHTML;
 }
-async function render() {
+let renderQueue = Promise.resolve();
+const textWarning = ref("");
+const originalUrl = ref("");
+function render() {
   const token = ++request;
   renderTask?.cancel();
   textTask?.cancel();
+  // A canvas can only be used by one PDF.js task, including during cancellation.
+  renderQueue = renderQueue.catch(() => {}).then(() => draw(token));
+}
+async function openOriginal() {
+  try {
+    const { mediaUrl } = await import("../core/media");
+    originalUrl.value = await mediaUrl(props.fragment.pdf!.assetId);
+  } catch {
+    error.value = "找不到原始 PDF，請從完整 ZIP 備份還原。";
+  }
+}
+async function draw(token: number) {
+  if (
+    token !== request ||
+    !host.value ||
+    !canvas.value ||
+    !layer.value ||
+    !props.fragment.pdf
+  )
+    return;
   release?.();
   release = undefined;
-  if (!host.value || !canvas.value || !layer.value || !props.fragment.pdf)
-    return;
   loading.value = true;
   error.value = "";
+  textWarning.value = "";
+  originalUrl.value = "";
   baseHtml = "";
   layer.value.replaceChildren();
+  let phase = "讀取原檔";
   try {
     const lease = await acquirePdf(props.fragment.pdf.assetId);
     if (token !== request) {
@@ -64,6 +88,10 @@ async function render() {
     const original = page.getViewport({ scale: 1 });
     const width = host.value.clientWidth,
       height = host.value.clientHeight;
+    if (width < 1 || height < 1) {
+      loading.value = false;
+      return;
+    }
     const scale =
       (props.expanded
         ? width / original.width
@@ -76,49 +104,60 @@ async function render() {
     };
     await nextTick();
     if (token !== request || !canvas.value || !layer.value) return;
+    const mobile =
+      /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      matchMedia("(pointer: coarse)").matches;
     const ratio = Math.min(
       devicePixelRatio || 1,
       2,
-      Math.sqrt(8_000_000 / (viewport.width * viewport.height)),
+      Math.sqrt(
+        (mobile ? 3_000_000 : 8_000_000) / (viewport.width * viewport.height),
+      ),
+      4096 / Math.max(viewport.width, viewport.height),
     );
     const c = canvas.value;
     c.width = Math.max(1, Math.floor(viewport.width * ratio));
     c.height = Math.max(1, Math.floor(viewport.height * ratio));
+    phase = "繪製頁面";
     renderTask = page.render({
       canvas: c,
       viewport,
       transform: ratio === 1 ? undefined : [ratio, 0, 0, ratio, 0, 0],
     });
-    const raster = renderTask.promise;
-    void raster.catch(() => {});
-    const content = await page.getTextContent();
+    await renderTask.promise;
     if (token !== request) return;
-    layer.value.style.setProperty(
-      "--total-scale-factor",
-      String(viewport.scale * page.userUnit),
-    );
-    layer.value.style.setProperty("--scale-round-x", "1px");
-    layer.value.style.setProperty("--scale-round-y", "1px");
-    textTask = new pdfjs.TextLayer({
-      textContentSource: content,
-      container: layer.value,
-      viewport,
-    });
-    await Promise.all([raster, textTask.render()]);
-    if (token !== request) return;
-    baseHtml = layer.value.innerHTML;
-    paint();
     loading.value = false;
-    page.cleanup();
+    // An optional selection-layer failure must never turn a rendered PDF into a white error page.
+    try {
+      const content = await page.getTextContent();
+      if (token !== request || !layer.value) return;
+      layer.value.style.setProperty(
+        "--total-scale-factor",
+        String(viewport.scale * page.userUnit),
+      );
+      layer.value.style.setProperty("--scale-round-x", "1px");
+      layer.value.style.setProperty("--scale-round-y", "1px");
+      textTask = new pdfjs.TextLayer({
+        textContentSource: content,
+        container: layer.value,
+        viewport,
+      });
+      await textTask.render();
+      if (token !== request) return;
+      baseHtml = layer.value.innerHTML;
+      paint();
+    } catch (e) {
+      if (token !== request) return;
+      layer.value?.replaceChildren();
+      textWarning.value = "頁面已顯示，這一頁暫時無法選取文字。";
+      console.warn("PDF selection layer failed", (e as Error).name);
+    }
   } catch (e) {
     if (token !== request) return;
-    if (
-      (e as Error).name === "RenderingCancelledException" ||
-      (e as Error).name === "AbortException"
-    )
-      return;
     loading.value = false;
-    error.value = "這一頁載入失敗，請重新匯入原始 PDF 或備份。";
+    const message = e instanceof Error ? e.message : String(e);
+    console.warn("PDF render failed", phase, message);
+    error.value = `${phase}失敗：${message.slice(0, 180)}`;
   }
 }
 watch(
@@ -144,7 +183,11 @@ onBeforeUnmount(() => {
   clearTimeout(resizeTimer);
   renderTask?.cancel();
   textTask?.cancel();
-  release?.();
+  void renderQueue.finally(() => release?.());
+  if (canvas.value) {
+    canvas.value.width = 0;
+    canvas.value.height = 0;
+  }
 });
 </script>
 <template>
@@ -164,8 +207,20 @@ onBeforeUnmount(() => {
         :data-end="fragment.end"
       ></div>
     </div>
-    <span v-if="loading" class="pdf-status">正在讀取這一頁…</span
-    ><span v-if="error" class="pdf-status" role="alert">{{ error }}</span>
+    <span v-if="loading" class="pdf-status">正在讀取這一頁…</span>
+    <div v-if="error" class="pdf-status pdf-error" role="alert">
+      <strong>這一頁暫時無法顯示</strong>
+      <p>{{ error }}</p>
+      <button class="toolbar-button" @click="render">重試此頁</button>
+      <button class="toolbar-button" @click="openOriginal">原檔預覽</button>
+      <a v-if="originalUrl" :href="originalUrl" target="_blank" rel="noopener"
+        >開啟原始 PDF</a
+      >
+      <span>原檔仍保留，無需刪除筆記。</span>
+    </div>
+    <span v-else-if="textWarning" class="pdf-text-warning" role="status">{{
+      textWarning
+    }}</span>
   </div>
 </template>
 <style>
@@ -198,6 +253,29 @@ onBeforeUnmount(() => {
   text-align: center;
   font-size: 13px;
   color: var(--text-primary, #8a725c);
+}
+.pdf-error {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  overflow-wrap: anywhere;
+  top: 20%;
+}
+.pdf-error p {
+  margin: 8px 0;
+}
+.pdf-error > span,
+.pdf-error a {
+  display: block;
+  margin-top: 8px;
+}
+.pdf-text-warning {
+  position: absolute;
+  bottom: 0;
+  padding: 4px 8px;
+  background: var(--field);
+  font-size: 12px;
 }
 .pdf-surface .textLayer {
   color-scheme: only light;

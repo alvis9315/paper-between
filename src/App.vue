@@ -28,6 +28,7 @@ import {
   Info,
   Sun,
   Moon,
+  Menu,
 } from "@lucide/vue";
 import { theme, toggleTheme, restoreTheme } from "./core/theme";
 import BookView from "./components/BookView.vue";
@@ -85,6 +86,24 @@ const detailPage = ref<number>();
 const infoOpen = ref(false);
 const importOpen = ref(false);
 const helpOpen = ref(false);
+const compactTools = ref(window.innerWidth < 820);
+const readerTools = ref<HTMLElement>();
+const readerMenuOpen = ref(false);
+function viewportChanged() {
+  compactTools.value = window.innerWidth < 820;
+  const viewport = window.visualViewport;
+  if (!viewport || Math.abs(viewport.scale - 1) < 0.01) {
+    document.documentElement.style.setProperty(
+      "--visual-height",
+      `${viewport?.height || innerHeight}px`,
+    );
+    document.documentElement.style.setProperty(
+      "--visual-top",
+      `${viewport?.offsetTop || 0}px`,
+    );
+  }
+}
+
 const backupImportOpen = ref(false);
 const backupError = ref("");
 const backupFileName = ref("");
@@ -611,9 +630,11 @@ async function loadFile(file?: File) {
     shelfOpen.value = false;
     await nextTick();
     parsing.value = false;
-    pendingImportMessage = candidate.warnings.length
-      ? "匯入完成。部分格式已簡化，可在頂部文件資訊查看提醒。"
-      : "匯入完成，筆記已準備好。";
+    pendingImportMessage = candidate.pdfAssetId
+      ? "PDF 已加入書架，原始版面與檔案已保留。"
+      : candidate.warnings.length
+        ? "匯入完成。部分格式已簡化，可在頂部文件資訊查看提醒。"
+        : "匯入完成，筆記已準備好。";
     await layout(candidate);
   } catch (error) {
     parsing.value = false;
@@ -705,7 +726,13 @@ function keydown(e: KeyboardEvent) {
     }
     return;
   }
-  if (shelfOpen.value || highlightOpen.value || infoOpen.value) return;
+  if (
+    readerMenuOpen.value ||
+    shelfOpen.value ||
+    highlightOpen.value ||
+    infoOpen.value
+  )
+    return;
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
     if (!searchOpen.value) toggleSearch();
@@ -737,8 +764,9 @@ watch(searchOpen, async (open) => {
   await nextTick();
   if (open) {
     searchDialog.value?.showModal();
-    searchInput.value?.focus();
+    searchInput.value?.focus({ preventScroll: true });
   } else {
+    searchInput.value?.blur();
     searchDialog.value?.close();
     query.value = "";
   }
@@ -785,6 +813,10 @@ watch([importOpen, helpOpen], async ([openImport, openHelp]) => {
 });
 onMounted(async () => {
   window.addEventListener("resize", scheduleResize);
+  window.addEventListener("resize", viewportChanged);
+  window.visualViewport?.addEventListener("resize", viewportChanged);
+  window.visualViewport?.addEventListener("scroll", viewportChanged);
+  viewportChanged();
   window.addEventListener("keydown", keydown);
   document.addEventListener("selectionchange", captureSelection);
   resizeObserver = new ResizeObserver(scheduleResize);
@@ -825,6 +857,9 @@ onBeforeUnmount(() => {
   controller?.abort();
   resizeObserver?.disconnect();
   window.removeEventListener("resize", scheduleResize);
+  window.removeEventListener("resize", viewportChanged);
+  window.visualViewport?.removeEventListener("resize", viewportChanged);
+  window.visualViewport?.removeEventListener("scroll", viewportChanged);
   window.removeEventListener("keydown", keydown);
   document.removeEventListener("selectionchange", captureSelection);
   [resizeTimer, queryTimer, saveTimer, toastTimer, locatorTimer].forEach(
@@ -873,80 +908,102 @@ onBeforeUnmount(() => {
           :aria-expanded="searchOpen"
           @click="toggleSearch"
         />
-        <span class="reader-divider" aria-hidden="true"></span>
         <IconAction
+          v-if="compactTools"
           compact
-          :icon="SquarePen"
-          label="編輯這本筆記"
-          :disabled="busy || turning || !doc || !!doc.pdfAssetId"
+          :icon="Menu"
+          label="操作選單"
+          :aria-expanded="readerMenuOpen"
+          @click="readerTools?.togglePopover()"
+        />
+        <div
+          ref="readerTools"
+          class="reader-tools"
+          :popover="compactTools ? 'auto' : undefined"
+          role="group"
+          aria-label="閱讀操作"
+          @toggle="readerMenuOpen = $event.newState === 'open'"
           @click="
-            richNew = false;
-            editorOpen = true;
+            compactTools &&
+            ($event.target as HTMLElement).closest('button') &&
+            readerTools?.hidePopover()
           "
-        />
-        <IconAction
-          compact
-          :icon="ImagePlus"
-          label="新增圖文筆記"
-          :disabled="busy || turning"
-          @click="
-            richNew = true;
-            editorOpen = true;
-          "
-        />
-        <IconAction
-          compact
-          :icon="ClipboardPaste"
-          label="貼上文字"
-          :disabled="busy || turning"
-          @click="textOpen = true"
-        />
-        <IconAction
-          compact
-          :icon="Upload"
-          label="匯入 Word"
-          :disabled="busy || turning"
-          @click="importOpen = true"
-        />
-        <IconAction
-          compact
-          :icon="FileText"
-          label="匯入 PDF"
-          :disabled="busy || turning"
-          @click="pdfInput?.click()"
-        />
-        <span class="reader-divider" aria-hidden="true"></span>
-        <IconAction
-          compact
-          :icon="Highlighter"
-          :label="`重點筆記（${doc?.annotations?.length || 0}）`"
-          :disabled="busy || turning"
-          :aria-expanded="highlightOpen"
-          @click="highlightOpen = !highlightOpen"
-        />
-        <IconAction
-          compact
-          :icon="Info"
-          :label="
-            doc?.warnings.length
-              ? `文件資訊與提醒（${doc.warnings.length}）`
-              : `文件資訊：${storageStatus}`
-          "
-          :aria-expanded="infoOpen"
-          @click="infoOpen = !infoOpen"
-        />
-        <IconAction
-          compact
-          :icon="theme === 'dark' ? Sun : Moon"
-          :label="theme === 'dark' ? '切換白天模式' : '切換夜間模式'"
-          @click="toggleTheme"
-        />
-        <IconAction
-          compact
-          :icon="CircleHelp"
-          label="閱讀指南"
-          @click="helpOpen = true"
-        />
+        >
+          <span class="reader-divider" aria-hidden="true"></span>
+          <IconAction
+            compact
+            :icon="SquarePen"
+            label="編輯這本筆記"
+            :disabled="busy || turning || !doc || !!doc.pdfAssetId"
+            @click="
+              richNew = false;
+              editorOpen = true;
+            "
+          />
+          <IconAction
+            compact
+            :icon="ImagePlus"
+            label="新增圖文筆記"
+            :disabled="busy || turning"
+            @click="
+              richNew = true;
+              editorOpen = true;
+            "
+          />
+          <IconAction
+            compact
+            :icon="ClipboardPaste"
+            label="貼上文字"
+            :disabled="busy || turning"
+            @click="textOpen = true"
+          />
+          <IconAction
+            compact
+            :icon="Upload"
+            label="匯入 Word"
+            :disabled="busy || turning"
+            @click="importOpen = true"
+          />
+          <IconAction
+            compact
+            :icon="FileText"
+            label="匯入 PDF"
+            :disabled="busy || turning"
+            @click="pdfInput?.click()"
+          />
+          <span class="reader-divider" aria-hidden="true"></span>
+          <IconAction
+            compact
+            :icon="Highlighter"
+            :label="`重點筆記（${doc?.annotations?.length || 0}）`"
+            :disabled="busy || turning"
+            :aria-expanded="highlightOpen"
+            @click="highlightOpen = !highlightOpen"
+          />
+          <IconAction
+            compact
+            :icon="Info"
+            :label="
+              doc?.warnings.length
+                ? `文件資訊與提醒（${doc.warnings.length}）`
+                : `文件資訊：${storageStatus}`
+            "
+            :aria-expanded="infoOpen"
+            @click="infoOpen = !infoOpen"
+          />
+          <IconAction
+            compact
+            :icon="theme === 'dark' ? Sun : Moon"
+            :label="theme === 'dark' ? '切換白天模式' : '切換夜間模式'"
+            @click="toggleTheme"
+          />
+          <IconAction
+            compact
+            :icon="CircleHelp"
+            label="閱讀指南"
+            @click="helpOpen = true"
+          />
+        </div>
       </div>
       <div v-else class="header-actions">
         <button

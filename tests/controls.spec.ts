@@ -292,6 +292,8 @@ test("reading guide stays above the header, fits short windows and shows scrollb
       "aria-busy",
       "false",
     );
+    if (viewport.width < 820)
+      await page.getByRole("button", { name: "操作選單", exact: true }).click();
     await page.getByRole("button", { name: "閱讀指南", exact: true }).click();
     const guide = page.getByRole("dialog", { name: "閱讀指南", exact: true });
     await expect(guide).toBeVisible();
@@ -306,18 +308,76 @@ test("reading guide stays above the header, fits short windows and shows scrollb
       await content.evaluate((el) => el.scrollHeight > el.clientHeight),
     ).toBe(true);
     await expect(content).not.toHaveClass(/is-scrolling/);
-    expect(
-      await content.evaluate((el) => getComputedStyle(el).scrollbarColor),
-    ).toBe("rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)");
+    const idleColor = await content.evaluate(
+      (el) =>
+        getComputedStyle(el).scrollbarColor ||
+        getComputedStyle(el, "::-webkit-scrollbar-thumb").backgroundColor,
+    );
+    expect(idleColor).toContain("rgba(0, 0, 0, 0)");
     await content.hover();
     await page.mouse.wheel(0, 230);
     await expect(content).toHaveClass(/is-scrolling/);
-    expect(
-      await content.evaluate((el) => getComputedStyle(el).scrollbarColor),
-    ).not.toBe("rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)");
+    // WebKit does not expose computed scrollbar colors; its activity class is still checked.
+    if (
+      await page.evaluate(() =>
+        CSS.supports("scrollbar-color", "red transparent"),
+      )
+    ) {
+      expect(
+        await content.evaluate((el) => getComputedStyle(el).scrollbarColor),
+      ).not.toBe(idleColor);
+    }
     await expect(content).not.toHaveClass(/is-scrolling/);
     await page.screenshot({ path: `test-results/guide-${viewport.width}.png` });
     await page.keyboard.press("Escape");
     await expect(guide).toHaveCount(0);
   }
+});
+
+test("mobile search stays visible, tools collapse, and inputs avoid focus zoom", async ({
+  page,
+}) => {
+  await reading(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const menu = page.getByRole("button", { name: "操作選單", exact: true });
+  await expect(menu).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "匯入 PDF", exact: true }),
+  ).not.toBeVisible();
+  await menu.click();
+  await expect(
+    page.getByRole("button", { name: "匯入 PDF", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "匯入 PDF", exact: true }),
+  ).not.toBeVisible();
+  await page
+    .getByRole("button", { name: "搜尋筆記（⌘K / Ctrl K / /）", exact: true })
+    .click();
+  const input = page.getByRole("textbox", { name: "搜尋整本筆記" });
+  await input.fill("閱讀");
+  const dialog = page.getByRole("dialog", { name: "全文搜尋" });
+  await expect(dialog.locator(".search-result").first()).toBeVisible();
+  expect(
+    await input.evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+  ).toBeGreaterThanOrEqual(16);
+  for (const height of [844, 420]) {
+    await page.setViewportSize({ width: 390, height });
+    const box = await dialog.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(height);
+    expect(
+      await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth),
+    ).toBe(true);
+    expect(await page.evaluate(() => visualViewport?.scale)).toBe(1);
+  }
+  await page.screenshot({ path: "test-results/mobile-search-keyboard.png" });
+  await page.getByRole("button", { name: "關閉搜尋", exact: true }).click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(menu).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "匯入 PDF", exact: true }),
+  ).toBeVisible();
 });

@@ -67,6 +67,7 @@ async function position() {
 }
 async function show() {
   if (props.disabled || open.value) return;
+  trigger.value?.focus({ preventScroll: true });
   open.value = true;
   active.value = Math.max(
     0,

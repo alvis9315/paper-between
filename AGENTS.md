@@ -32,7 +32,7 @@
 ## 驗證與版本
 
 - 交付前執行 `npm run build`（含 typecheck）；互動、版面、主題或測試變動再執行 `npm test`。
-- Chrome 為目前 Playwright 設定的瀏覽器。瀏覽器測試使用合成資料；報告與截圖可重建，不是接手的必要檔案。
+- Playwright 同時測 Chrome 與 WebKit（後者仍非實體 Safari 26.0.1）；新機先執行 `npm exec playwright install webkit`。瀏覽器測試使用合成資料；報告與截圖可重建，不是接手的必要檔案。
 - 檢查 `git diff --check`。授權檔會依建置平台生成；沒有變更依賴時，避免混入無關的平台授權檔差異。
 - 完成一個版本時同步 `package.json`、`package-lock.json` 與 `CHANGELOG.md`。修 bug 用 patch、新增相容功能用 minor；尚未完成的項目放 `Unreleased` 或狀態文件，不冒充已發布。
 - Conventional Commits，例如 `feat: ...`、`fix: ...`、`docs: ...`。不 force push，不覆蓋使用者既有修改。

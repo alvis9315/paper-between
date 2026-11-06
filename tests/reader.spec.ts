@@ -95,7 +95,15 @@ async function assertViewport(page: Page) {
     expect(c.sw).toBeLessThanOrEqual(c.w + 1);
   }
   await page.mouse.move(metrics.w / 2, metrics.h / 2);
-  await page.mouse.wheel(0, 900);
+  try {
+    await page.mouse.wheel(0, 900);
+  } catch (error) {
+    if (
+      !String(error).includes("Mouse wheel is not supported in mobile WebKit")
+    )
+      throw error;
+    await page.evaluate(() => scrollBy(0, 900));
+  }
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
 }
 
@@ -328,23 +336,25 @@ test("touch toolbar, swipes, highlights and restored reading position", async ({
   ).not.toBeVisible();
   await page.screenshot({ path: "test-results/reader-touch.png" });
   await page.locator(".book-shell").evaluate((el) => {
-    const touch = (x: number) =>
-      new Touch({ identifier: 1, target: el, clientX: x, clientY: 300 });
-    el.dispatchEvent(
-      new TouchEvent("touchstart", { bubbles: true, touches: [touch(300)] }),
-    );
-    el.dispatchEvent(
-      new TouchEvent("touchend", {
-        bubbles: true,
-        changedTouches: [touch(100)],
-      }),
-    );
+    const touch = (x: number) => ({
+      identifier: 1,
+      target: el,
+      clientX: x,
+      clientY: 300,
+    });
+    const start = new Event("touchstart", { bubbles: true });
+    Object.defineProperty(start, "touches", { value: [touch(300)] });
+    el.dispatchEvent(start);
+    const end = new Event("touchend", { bubbles: true });
+    Object.defineProperty(end, "changedTouches", { value: [touch(100)] });
+    el.dispatchEvent(end);
   });
   await expect(page.locator(".book-pages > .paper")).toHaveAttribute(
     "data-page",
     "2",
   );
   const before = await page.locator(".book-workspace").boundingBox();
+  await page.getByRole("button", { name: "操作選單", exact: true }).click();
   await page
     .getByRole("button", { name: "重點筆記（0）", exact: true })
     .click();
@@ -357,6 +367,7 @@ test("touch toolbar, swipes, highlights and restored reading position", async ({
   await expect(
     page.getByRole("region", { name: "重點筆記", exact: true }),
   ).not.toBeVisible();
+  await page.getByRole("button", { name: "操作選單", exact: true }).click();
   await page.getByRole("button", { name: "切換夜間模式", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.waitForTimeout(700);
@@ -401,4 +412,50 @@ test("horizontal trackpad wheel flips one spread per gesture and ignores vertica
   await page.mouse.wheel(-120, 0);
   await expect(first).toHaveAttribute("data-page", "1");
   expect(await page.evaluate(() => scrollX)).toBe(0);
+});
+
+test("PDF canvas survives selection-layer failure and repeated mobile resizes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("main.bookshelf-page")).toBeVisible();
+  await page.evaluate(async () => {
+    const path = "/src/core/pdf.ts";
+    const { pdfjs } = await import(path);
+    pdfjs.TextLayer.prototype.render = async () => {
+      throw new Error("synthetic selection-layer failure");
+    };
+  });
+  await page.locator("#pdf-file").setInputFiles({
+    name: "mobile.pdf",
+    mimeType: "application/pdf",
+    buffer: pdfFixture(),
+  });
+  await expect(page.locator(".book-workspace")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
+  for (const width of [390, 400, 320, 430])
+    await page.setViewportSize({ width, height: 844 });
+  await expect(
+    page.locator(".book-pages > .paper .pdf-text-warning"),
+  ).toBeVisible();
+  await expect(page.locator(".pdf-error")).toHaveCount(0);
+  const painted = await page
+    .locator(".book-pages > .paper canvas")
+    .first()
+    .evaluate((el: HTMLCanvasElement) => {
+      const ctx = el.getContext("2d")!;
+      return [...ctx.getImageData(0, 0, el.width, el.height).data].some(
+        (n, i) => i % 4 !== 3 && n < 150,
+      );
+    });
+  expect(painted).toBe(true);
+  await page.reload();
+  await expect(page.locator(".book-workspace")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
+  await expect(page.locator(".book-pages > .paper .pdf-status")).toHaveCount(0);
+  await expect(page.locator(".pdf-text-warning")).toHaveCount(0);
 });
