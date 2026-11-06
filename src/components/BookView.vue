@@ -16,6 +16,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   change: [index: number];
   turning: [value: boolean];
+  jump: [page: number];
+  enlarge: [page: number];
 }>();
 const turn = ref<{
   from: number;
@@ -129,6 +131,8 @@ onBeforeUnmount(() => clearTimeout(timer));
     <div class="book-cover"></div>
     <div class="book-pages">
       <PageLeaf
+        @jump="emit('jump', $event)"
+        @enlarge="emit('enlarge', $event)"
         :page="pages[left]"
         :annotations="annotations"
         :title="title"
@@ -139,6 +143,8 @@ onBeforeUnmount(() => clearTimeout(timer));
       />
       <PageLeaf
         v-if="!single"
+        @jump="emit('jump', $event)"
+        @enlarge="emit('enlarge', $event)"
         :page="pages[right]"
         :annotations="annotations"
         :title="title"
@@ -175,8 +181,7 @@ onBeforeUnmount(() => clearTimeout(timer));
       </div>
       <button
         class="page-edge edge-left"
-        tabindex="-1"
-        aria-label="紙頁邊緣：上一頁"
+        aria-label="上一頁"
         :disabled="index === 0 || !!turn || disabled"
         @click="move(-1)"
       >
@@ -184,8 +189,7 @@ onBeforeUnmount(() => clearTimeout(timer));
       </button>
       <button
         class="page-edge edge-right"
-        tabindex="-1"
-        aria-label="紙頁邊緣：下一頁"
+        aria-label="下一頁"
         :disabled="
           index + (single ? 1 : 2) >= pages.length || !!turn || disabled
         "

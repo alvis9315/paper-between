@@ -1,6 +1,12 @@
 <script setup lang="ts">
 defineProps<{ name: string; size?: number }>();
 const paths: Record<string, string[]> = {
+  zoom: [
+    "M15 10a5 5 0 1 1-10 0 5 5 0 0 1 10 0",
+    "m14 14 6 6",
+    "M7 10h6",
+    "M10 7v6",
+  ],
   sun: [
     "M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
     "M12 2v2",

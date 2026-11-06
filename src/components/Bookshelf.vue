@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 import IconAction from "./IconAction.vue";
 import {
   ArchiveRestore,
+  LayoutGrid,
+  List,
   Copy,
   Download,
   RotateCcw,
@@ -31,6 +33,22 @@ const emit = defineEmits<{
   restore: [id: string];
   back: [];
 }>();
+const viewKey = "paper-between-shelf-view";
+function savedView(): "grid" | "list" {
+  try {
+    return localStorage.getItem(viewKey) === "list" ? "list" : "grid";
+  } catch {
+    return "grid";
+  }
+}
+const view = ref(savedView());
+watch(view, (value) => {
+  try {
+    localStorage.setItem(viewKey, value);
+  } catch {
+    /* Switching views still works when browser storage is unavailable. */
+  }
+});
 const trash = ref(false);
 const query = ref("");
 const editing = ref<string>();
@@ -149,12 +167,30 @@ function rename(id: string) {
           回收桶 <span>{{ deleted.length }}</span>
         </button>
       </div>
-      <label class="shelf-search"
-        ><AppIcon name="search" :size="16" /><input
-          v-model="query"
-          placeholder="搜尋筆記名稱"
-          aria-label="搜尋筆記名稱"
-      /></label>
+      <div class="shelf-display-tools">
+        <label class="shelf-search"
+          ><AppIcon name="search" :size="16" /><input
+            v-model="query"
+            placeholder="搜尋筆記名稱"
+            aria-label="搜尋筆記名稱"
+        /></label>
+        <div class="shelf-view-toggle" role="group" aria-label="書架顯示方式">
+          <IconAction
+            compact
+            :icon="LayoutGrid"
+            label="卡片式"
+            :aria-pressed="view === 'grid'"
+            @click="view = 'grid'"
+          />
+          <IconAction
+            compact
+            :icon="List"
+            label="條列式"
+            :aria-pressed="view === 'list'"
+            @click="view = 'list'"
+          />
+        </div>
+      </div>
     </div>
     <p v-if="trash" class="trash-hint">
       移到回收桶的筆記仍會保留，你可以隨時還原。
@@ -162,6 +198,7 @@ function rename(id: string) {
     <section
       v-if="visible.length"
       class="shelf-grid"
+      :class="{ 'shelf-list': view === 'list' }"
       :aria-label="trash ? '回收桶筆記' : '我的筆記'"
     >
       <article
@@ -184,6 +221,9 @@ function rename(id: string) {
             <span class="mini-book-label">頁 白 · 閱 讀 筆 記</span>
           </div>
           <div class="book-card-content">
+            <h3 v-if="view === 'list'" class="list-book-title">
+              {{ b.document.title }}
+            </h3>
             <div
               class="card-current"
               v-if="b.document.id === activeId && !trash"
@@ -423,6 +463,11 @@ function rename(id: string) {
     3px 4px 0 var(--shadow-deep, #e9e1d4),
     4px 5px 0 var(--shadow-deep, #c4b8a8);
   isolation: isolate;
+  color: var(--cover-ink, #594535);
+  transform-origin: 15% 80%;
+  transition:
+    transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 260ms ease;
   overflow: hidden;
 }
 .cover-1 {
@@ -629,8 +674,13 @@ function rename(id: string) {
     flex-wrap: wrap;
     margin: 20px 0;
   }
-  .shelf-search {
+  .shelf-display-tools {
     width: 100%;
+  }
+  .shelf-search {
+    flex: 1;
+    min-width: 0;
+    width: auto;
     border: 1px solid var(--line, #ded1c0);
     padding: 0 10px;
     border-radius: 5px;
@@ -666,6 +716,145 @@ function rename(id: string) {
   }
   .shelf-empty {
     min-height: 260px;
+  }
+}
+/* Both views share the same book actions and filtering state. */
+.shelf-display-tools {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.shelf-view-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+}
+.shelf-view-toggle :deep(button[aria-pressed="true"]) {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+}
+.book-card {
+  perspective: 1000px;
+}
+.book-open:focus-visible {
+  outline-offset: -4px;
+}
+.book-open:not(:disabled):focus-visible .mini-book {
+  transform: translateY(-6px) rotate(-1deg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .book-open:not(:disabled):hover .mini-book {
+    transform: perspective(900px) translateY(-8px) rotateX(4deg) rotateY(-5deg)
+      rotateZ(-1deg);
+    box-shadow:
+      4px 6px 0 var(--border),
+      7px 17px 20px -8px #30201c55;
+  }
+  .book-open:not(:disabled):active .mini-book {
+    transform: translateY(-3px) rotate(-0.5deg);
+  }
+}
+.shelf-grid.shelf-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.shelf-list .book-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.shelf-list .book-open {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  padding: 16px 20px;
+}
+.shelf-list .mini-book {
+  width: 70px;
+  height: 96px;
+  padding: 12px 8px 10px 16px;
+}
+.shelf-list .mini-book-line {
+  left: 7px;
+}
+.shelf-list .mini-book > svg {
+  width: 15px;
+  height: 15px;
+}
+.shelf-list .mini-book h2 {
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  margin-top: 7px;
+  -webkit-line-clamp: 3;
+}
+.shelf-list .mini-book-label {
+  display: none;
+}
+.shelf-list .book-card-content {
+  padding: 0;
+  min-width: 0;
+}
+.list-book-title {
+  font:
+    600 19px/1.5 "PMingLiU",
+    serif;
+  color: var(--heading);
+  overflow-wrap: anywhere;
+  margin-bottom: 5px;
+}
+.shelf-list .book-preview {
+  -webkit-line-clamp: 1;
+  min-height: 0;
+}
+.shelf-list .book-progress {
+  max-width: 280px;
+  margin-top: 8px;
+}
+.shelf-list .book-updated {
+  margin-top: 7px;
+}
+.shelf-list .card-current {
+  position: static;
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.shelf-list .book-card-actions {
+  border: 0;
+  background: transparent;
+  padding: 16px;
+}
+.shelf-list .rename-form {
+  grid-column: 1 / -1;
+}
+@media (max-width: 700px) {
+  .shelf-list .book-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shelf-list .book-open {
+    padding: 16px;
+    gap: 16px;
+  }
+  .shelf-list .book-card-actions {
+    border-top: 1px solid var(--border);
+    padding: 6px 12px;
+  }
+  .shelf-list .list-book-title {
+    font-size: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mini-book {
+    transition: none;
+  }
+  .book-open:not(:disabled):is(:hover, :focus-visible, :active) .mini-book {
+    transform: none;
   }
 }
 </style>

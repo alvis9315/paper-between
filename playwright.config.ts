@@ -7,15 +7,15 @@ export default defineConfig({
   reporter: "list",
   outputDir: "./test-results",
   use: {
-    baseURL: "http://127.0.0.1:5178",
+    baseURL: "http://127.0.0.1:4112",
     browserName: "chromium",
     channel: "chrome",
     headless: true,
     viewport: { width: 1440, height: 1000 },
   },
   webServer: {
-    command: "npm run dev",
-    url: "http://127.0.0.1:5178",
+    command: "npm run dev -- --port 4112 --strictPort",
+    url: "http://127.0.0.1:4112",
     reuseExistingServer: true,
   },
 });

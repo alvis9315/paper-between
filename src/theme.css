@@ -10,40 +10,43 @@
   --focus-soft: #aa886633;
   --danger: #a05339;
   --on-accent: #fffaf3;
+  --accent-ink: #88634f;
+  --cover-ink: #594535;
   --desk: #ece5db;
   --desk-glow: #f3eee7;
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --desk: #211e1b;
-  --desk-glow: #2c2621;
-  --ink: #e4d9c9;
-  --heading: #efdfcb;
-  --muted: #b7a692;
-  --paper: #302b25;
-  --accent: #c4a383;
-  --accent-hover: #d7b99c;
-  --on-accent: #261e17;
-  --border: #584c40;
-  --border-strong: #8b735e;
-  --field: #28231e;
-  --surface: #332c26;
-  --surface-raised: #39312a;
-  --surface-panel: #302a24;
-  --surface-inset: #42372d;
-  --text-primary: #e4d9c9;
-  --text-secondary: #c4b39e;
-  --text-muted: #b1a18e;
-  --line: #574b40;
-  --line-strong: #89715b;
-  --focus-soft: #c4a38344;
+  --desk: #222122;
+  --desk-glow: #2b292a;
+  --ink: #e8e0db;
+  --heading: #f1e5de;
+  --muted: #beb3ad;
+  --paper: #302e2e;
+  --accent: #88634f;
+  --accent-hover: #9a725b;
+  --on-accent: #fffaf3;
+  --accent-ink: #dfbba4;
+  --border: #514947;
+  --border-strong: #8b756b;
+  --field: #292627;
+  --surface: #332f30;
+  --surface-raised: #383334;
+  --surface-panel: #302d2e;
+  --surface-inset: #3c3637;
+  --text-primary: #e8e0db;
+  --text-secondary: #c6b9b1;
+  --text-muted: #b4a7a0;
+  --line: #514947;
+  --line-strong: #8b756b;
+  --focus-soft: #88634f44;
   --danger: #e8a58d;
   --shadow-soft: #00000022;
   --shadow-deep: #00000066;
   --scrim: #100d0bc4;
-  --overlay: #28231ef2;
-  --hover-wash: #d5b79712;
-  --book-cover: #79604b;
+  --overlay: #292627f2;
+  --hover-wash: #dfbba412;
+  --book-cover: #88634f;
   --search-mark: #61503b;
   --search-active: #cba85d;
 }
@@ -64,7 +67,7 @@ select {
   accent-color: var(--accent);
 }
 :is(button, a, input, textarea, select, summary):focus-visible {
-  outline-color: var(--accent);
+  outline-color: var(--accent-ink);
 }
 .theme-toggle {
   display: flex;
@@ -90,19 +93,6 @@ select {
 }
 .theme-toggle:hover {
   border-color: var(--accent);
-}
-[data-theme="dark"] .mini-book {
-  background: #66513f;
-  border-color: #8a6e55;
-  color: #f1dfc7;
-}
-[data-theme="dark"] .mini-book.cover-1 {
-  background: #68524a;
-  border-color: #896a60;
-}
-[data-theme="dark"] .mini-book.cover-2 {
-  background: #5c594b;
-  border-color: #7e7b66;
 }
 [data-theme="dark"] .book-gutter {
   background: linear-gradient(

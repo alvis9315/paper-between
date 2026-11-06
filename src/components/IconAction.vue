@@ -20,6 +20,7 @@ import {
 } from "@floating-ui/dom";
 defineOptions({ inheritAttrs: false });
 const props = defineProps<{
+  compact?: boolean;
   label: string;
   icon: Component;
   disabled?: boolean;
@@ -127,7 +128,7 @@ onBeforeUnmount(hide);
       ref="button"
       v-bind="$attrs"
       class="icon-action-button"
-      :class="{ 'danger-action': danger }"
+      :class="{ 'danger-action': danger, compact }"
       type="button"
       :disabled="disabled"
       :aria-label="label"
@@ -193,7 +194,7 @@ onBeforeUnmount(hide);
 }
 .icon-action-button:not(:disabled):is(:hover, :focus-visible) {
   background: color-mix(in srgb, var(--accent) 11%, transparent);
-  color: var(--accent);
+  color: var(--accent-ink, var(--accent));
   border-color: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .icon-action-button.danger-action:not(:disabled):is(:hover, :focus-visible) {
@@ -202,7 +203,7 @@ onBeforeUnmount(hide);
   color: var(--danger);
 }
 .icon-action-button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink, var(--accent));
   outline-offset: 3px;
 }
 .touch-action-label {
@@ -261,6 +262,22 @@ onBeforeUnmount(hide);
     font-size: 10px;
     line-height: 1.4;
     white-space: nowrap;
+  }
+}
+.icon-action-button.compact {
+  width: 40px;
+  min-height: 40px;
+  flex-direction: row;
+  padding: 8px;
+}
+.compact .touch-action-label {
+  display: none;
+}
+@media (max-width: 480px) {
+  .icon-action-button.compact {
+    width: 42px;
+    min-height: 36px;
+    padding: 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

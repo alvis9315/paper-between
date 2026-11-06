@@ -11,7 +11,7 @@ export function applyTheme(value: Theme, persist = true) {
   document.documentElement.style.colorScheme = value;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", value === "dark" ? "#211e1b" : "#ece5db");
+    ?.setAttribute("content", value === "dark" ? "#222122" : "#ece5db");
   if (persist) {
     manual = true;
     try {

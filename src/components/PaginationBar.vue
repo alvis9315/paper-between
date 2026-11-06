@@ -1,20 +1,38 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { pageNumbers } from "../core/navigation";
+import { computed, nextTick, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 const props = defineProps<{
+  open: boolean;
   index: number;
   total: number;
   single: boolean;
   disabled: boolean;
 }>();
-const emit = defineEmits<{ jump: [page: number]; move: [direction: number] }>();
+const emit = defineEmits<{ jump: [page: number]; close: [] }>();
+const dialog = ref<HTMLDialogElement>();
+const field = ref<HTMLInputElement>();
 const input = ref("");
 const error = ref("");
 const end = computed(() =>
   Math.min(props.total, props.index + (props.single ? 1 : 2)),
 );
-const numbers = computed(() => pageNumbers(props.total, props.index + 1));
+watch(
+  () => props.open,
+  async (open) => {
+    await nextTick();
+    if (open) {
+      input.value = String(props.index + 1);
+      error.value = "";
+      dialog.value?.showModal();
+      field.value?.focus();
+      field.value?.select();
+    } else dialog.value?.close();
+  },
+);
+function navigate(page: number) {
+  emit("jump", page);
+  emit("close");
+}
 function jump() {
   const value = Number(input.value);
   if (
@@ -26,87 +44,54 @@ function jump() {
     error.value = `請輸入 1 至 ${props.total} 的頁碼`;
     return;
   }
-  error.value = "";
-  emit("jump", value);
-  input.value = "";
+  navigate(value);
 }
 </script>
 <template>
-  <nav class="pagination" aria-label="頁碼與翻頁控制">
-    <div class="reading-range" aria-live="polite">
-      第
-      <strong>{{ index + 1 }}{{ end > index + 1 ? `–${end}` : "" }}</strong> 頁
-      <span>／ 共 {{ total }} 頁</span>
-    </div>
-    <div class="page-controls">
-      <button
-        class="icon-button endpoint"
-        aria-label="首頁"
-        title="首頁"
-        :disabled="disabled || index === 0"
-        @click="emit('jump', 1)"
-      >
-        <AppIcon name="first" />
-      </button>
-      <button
-        class="icon-button"
-        aria-label="上一頁"
-        title="上一頁（←）"
-        :disabled="disabled || index === 0"
-        @click="emit('move', -1)"
-      >
-        <AppIcon name="left" />
-      </button>
-      <div class="page-numbers">
-        <template v-for="n in numbers" :key="n"
-          ><span v-if="typeof n === 'string'" class="ellipsis">…</span
-          ><button
-            v-else
-            class="number-button"
-            :class="{ current: n >= index + 1 && n <= end }"
-            :aria-label="`跳到第 ${n} 頁`"
-            :aria-current="n >= index + 1 && n <= end ? 'page' : undefined"
-            :disabled="disabled"
-            @click="emit('jump', n)"
-          >
-            {{ n }}
-          </button></template
-        >
-      </div>
-      <button
-        class="icon-button"
-        aria-label="下一頁"
-        title="下一頁（→）"
-        :disabled="disabled || end >= total"
-        @click="emit('move', 1)"
-      >
-        <AppIcon name="right" />
-      </button>
-      <button
-        class="icon-button endpoint"
-        aria-label="末頁"
-        title="末頁"
-        :disabled="disabled || end >= total"
-        @click="emit('jump', total)"
-      >
-        <AppIcon name="last" />
+  <dialog
+    ref="dialog"
+    class="page-jump-dialog"
+    aria-labelledby="jump-title"
+    @cancel="emit('close')"
+    @close="emit('close')"
+    @click="$event.target === dialog && emit('close')"
+  >
+    <div class="jump-heading">
+      <h2 id="jump-title">跳至頁碼</h2>
+      <button class="icon-button" aria-label="關閉跳頁" @click="emit('close')">
+        <AppIcon name="close" />
       </button>
     </div>
-    <form class="jump-form" @submit.prevent="jump">
-      <label for="jump-page">跳至</label
-      ><input
+    <p class="jump-range">
+      第 {{ index + 1 }}{{ end > index + 1 ? `–${end}` : "" }} 頁／共
+      {{ total }} 頁
+    </p>
+    <form class="reader-jump-form" @submit.prevent="jump">
+      <label for="jump-page">頁碼</label>
+      <input
         id="jump-page"
+        ref="field"
         v-model="input"
         inputmode="numeric"
         autocomplete="off"
-        placeholder="頁碼"
         aria-label="輸入頁碼"
         :aria-invalid="!!error"
+        :aria-describedby="error ? 'jump-error' : undefined"
         :disabled="disabled"
         @input="error = ''"
-      /><button type="submit" :disabled="disabled" aria-label="前往頁碼">
-        <AppIcon name="right" :size="16" /></button
-      ><span v-if="error" class="jump-error" role="alert">{{ error }}</span>
+      />
+      <button type="submit" :disabled="disabled">前往</button>
     </form>
-  </nav>
+    <p v-if="error" id="jump-error" class="reader-jump-error" role="alert">
+      {{ error }}
+    </p>
+    <div class="jump-endpoints">
+      <button :disabled="disabled || index === 0" @click="navigate(1)">
+        <AppIcon name="first" :size="16" />第一頁
+      </button>
+      <button :disabled="disabled || end >= total" @click="navigate(total)">
+        最後一頁<AppIcon name="last" :size="16" />
+      </button>
+    </div>
+  </dialog>
 </template>

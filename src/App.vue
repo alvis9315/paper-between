@@ -10,6 +10,24 @@ import {
   watch,
 } from "vue";
 import AppIcon from "./components/AppIcon.vue";
+import IconAction from "./components/IconAction.vue";
+const ReaderDetail = defineAsyncComponent(
+  () => import("./components/ReaderDetail.vue"),
+);
+import {
+  Search,
+  SquarePen,
+  ImagePlus,
+  ClipboardPaste,
+  Upload,
+  FileText,
+  Highlighter,
+  Grid2X2,
+  CircleHelp,
+  Info,
+  Sun,
+  Moon,
+} from "@lucide/vue";
 import { theme, toggleTheme, restoreTheme } from "./core/theme";
 import BookView from "./components/BookView.vue";
 import PaginationBar from "./components/PaginationBar.vue";
@@ -60,6 +78,10 @@ const pdfInput = ref<HTMLInputElement>();
 const parseMessage = ref("正在解析文件…");
 const searchInput = ref<HTMLInputElement>();
 const searchOpen = ref(false);
+const searchDialog = ref<HTMLDialogElement>();
+const jumpOpen = ref(false);
+const detailPage = ref<number>();
+const infoOpen = ref(false);
 const importOpen = ref(false);
 const helpOpen = ref(false);
 const textOpen = ref(false);
@@ -115,15 +137,6 @@ const bookStyle = computed(() => ({
   "--page-width": `${size.value.width}px`,
   "--page-height": `${size.value.height}px`,
 }));
-const chapter = computed(() => {
-  const first = pages.value[index.value]?.fragments[0];
-  if (!doc.value || !first) return "閱讀筆記";
-  const at = doc.value.blocks.findIndex((b) => b.id === first.blockId);
-  return (
-    doc.value.blocks.slice(0, at + 1).findLast((b) => b.kind === "heading")
-      ?.text || "閱讀筆記"
-  );
-});
 function notify(message: string, error = false) {
   toast.value = message;
   toastError.value = error;
@@ -136,15 +149,12 @@ function notify(message: string, error = false) {
   );
 }
 function measureSize(): PageSize {
-  const available =
-    workspace.value?.clientWidth || Math.min(window.innerWidth - 32, 1120);
+  const available = workspace.value?.clientWidth || window.innerWidth * 0.898;
   const mobile = window.innerWidth < 820;
-  const width = Math.floor(Math.min(1120, available) / (mobile ? 1 : 2));
-  const height = Math.round(
-    Math.max(
-      mobile ? 540 : 570,
-      Math.min(760, window.innerHeight - (mobile ? 225 : 275)),
-    ),
+  const width = Math.floor(available / (mobile ? 1 : 2));
+  const height = Math.max(
+    120,
+    Math.floor(workspace.value?.clientHeight || window.innerHeight - 90),
   );
   return { width, height, mobile };
 }
@@ -489,12 +499,7 @@ async function locateAnnotation(id: string, a: Annotation) {
     { blockId: target.blockId, offset: target.start },
   );
   selectedAnnotation.value = a.id;
-  workspace.value?.scrollIntoView({
-    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "instant"
-      : "smooth",
-    block: "start",
-  });
+  highlightOpen.value = false;
 }
 function annotationClick(event: MouseEvent) {
   if (window.getSelection()?.toString()) return;
@@ -577,7 +582,7 @@ async function loadFile(file?: File) {
     await nextTick();
     parsing.value = false;
     pendingImportMessage = candidate.warnings.length
-      ? "匯入完成。部分格式已簡化，請查看下方文件提醒。"
+      ? "匯入完成。部分格式已簡化，可在頂部文件資訊查看提醒。"
       : "匯入完成，筆記已準備好。";
     await layout(candidate);
   } catch (error) {
@@ -622,18 +627,24 @@ async function createTextNotebook(
       : "文字筆記已建立，原有筆記保留在書架。";
   await layout(source);
 }
+function closeDetail() {
+  if (detailPage.value !== undefined) jump(detailPage.value + 1);
+  detailPage.value = undefined;
+}
 function toggleSearch() {
   searchOpen.value = !searchOpen.value;
   if (searchOpen.value) void nextTick(() => searchInput.value?.focus());
 }
 function keydown(e: KeyboardEvent) {
   const target = e.target as HTMLElement;
-  if (target.closest(".pdf-dialog")) return;
+  if (target.closest("dialog[open]")) return;
   if (e.key === "Escape") {
     importOpen.value = false;
     helpOpen.value = false;
     textOpen.value = false;
     editorOpen.value = false;
+    highlightOpen.value = false;
+    infoOpen.value = false;
     if (searchOpen.value) {
       searchOpen.value = false;
       query.value = "";
@@ -664,7 +675,13 @@ function keydown(e: KeyboardEvent) {
     }
     return;
   }
-  if (shelfOpen.value) return;
+  if (shelfOpen.value || highlightOpen.value || infoOpen.value) return;
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    if (!searchOpen.value) toggleSearch();
+    else searchInput.value?.focus();
+    return;
+  }
   if (
     target.closest('input,textarea,select,[contenteditable="true"]') ||
     e.altKey ||
@@ -686,6 +703,30 @@ function keydown(e: KeyboardEvent) {
     book.value?.move(e.key === "ArrowRight" ? 1 : -1);
   }
 }
+watch(searchOpen, async (open) => {
+  await nextTick();
+  if (open) {
+    searchDialog.value?.showModal();
+    searchInput.value?.focus();
+  } else {
+    searchDialog.value?.close();
+    query.value = "";
+  }
+});
+watch(shelfOpen, async () => {
+  searchOpen.value = false;
+  jumpOpen.value = false;
+  detailPage.value = undefined;
+  infoOpen.value = false;
+  await nextTick();
+  scheduleResize();
+});
+watch(activeResult, async () => {
+  await nextTick();
+  searchDialog.value
+    ?.querySelector(".search-result.active")
+    ?.scrollIntoView({ block: "nearest" });
+});
 watch(query, (value) => {
   clearTimeout(queryTimer);
   if (!value.trim()) {
@@ -765,6 +806,7 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="app"
+    :class="{ 'reading-mode': !shelfOpen }"
     @dragover.prevent="
       dragOver =
         !editorOpen &&
@@ -777,9 +819,107 @@ onBeforeUnmount(() => {
       <a class="brand" href="#" aria-label="頁白首頁" @click.prevent="showShelf"
         ><span class="brand-mark"><AppIcon name="book" :size="25" /></span
         ><span class="brand-name">頁白</span
-        ><span class="brand-subtitle">留一點時間，給閱讀。</span></a
+        ><span v-if="shelfOpen" class="brand-subtitle"
+          >留一點時間，給閱讀。</span
+        ></a
       >
-      <div class="header-actions">
+      <h1 v-if="!shelfOpen" class="reader-title" :title="title">{{ title }}</h1>
+      <div
+        v-if="!shelfOpen"
+        class="reader-actions"
+        role="toolbar"
+        aria-label="筆記本工具列"
+      >
+        <IconAction
+          compact
+          :icon="Search"
+          label="搜尋筆記（⌘K / Ctrl K / /）"
+          :aria-expanded="searchOpen"
+          @click="toggleSearch"
+        />
+        <span class="reader-divider" aria-hidden="true"></span>
+        <IconAction
+          compact
+          :icon="SquarePen"
+          label="編輯這本筆記"
+          :disabled="busy || turning || !doc || !!doc.pdfAssetId"
+          @click="
+            richNew = false;
+            editorOpen = true;
+          "
+        />
+        <IconAction
+          compact
+          :icon="ImagePlus"
+          label="新增圖文筆記"
+          :disabled="busy || turning"
+          @click="
+            richNew = true;
+            editorOpen = true;
+          "
+        />
+        <IconAction
+          compact
+          :icon="ClipboardPaste"
+          label="貼上文字"
+          :disabled="busy || turning"
+          @click="textOpen = true"
+        />
+        <IconAction
+          compact
+          :icon="Upload"
+          label="匯入 Word"
+          :disabled="busy || turning"
+          @click="importOpen = true"
+        />
+        <IconAction
+          compact
+          :icon="FileText"
+          label="匯入 PDF"
+          :disabled="busy || turning"
+          @click="pdfInput?.click()"
+        />
+        <span class="reader-divider" aria-hidden="true"></span>
+        <IconAction
+          compact
+          :icon="Highlighter"
+          :label="`重點筆記（${doc?.annotations?.length || 0}）`"
+          :disabled="busy || turning"
+          :aria-expanded="highlightOpen"
+          @click="highlightOpen = !highlightOpen"
+        />
+        <IconAction
+          compact
+          :icon="Info"
+          :label="
+            doc?.warnings.length
+              ? `文件資訊與提醒（${doc.warnings.length}）`
+              : `文件資訊：${storageStatus}`
+          "
+          :aria-expanded="infoOpen"
+          @click="infoOpen = !infoOpen"
+        />
+        <IconAction
+          compact
+          :icon="theme === 'dark' ? Sun : Moon"
+          :label="theme === 'dark' ? '切換白天模式' : '切換夜間模式'"
+          @click="toggleTheme"
+        />
+        <IconAction
+          compact
+          :icon="Grid2X2"
+          label="我的書架"
+          :disabled="busy || turning"
+          @click="showShelf"
+        />
+        <IconAction
+          compact
+          :icon="CircleHelp"
+          label="閱讀指南"
+          @click="helpOpen = true"
+        />
+      </div>
+      <div v-else class="header-actions">
         <button
           class="theme-toggle"
           :aria-pressed="theme === 'dark'"
@@ -793,13 +933,9 @@ onBeforeUnmount(() => {
             ><AppIcon name="moon" :size="17"
           /></span>
         </button>
-        <button
-          class="quiet-button shelf-toggle"
-          :disabled="busy || turning"
-          @click="shelfOpen ? returnToReading() : showShelf()"
-        >
+        <span class="quiet-button shelf-indicator" aria-current="page">
           <AppIcon name="grid" :size="17" />我的書架
-          <span>{{ books.filter((b) => !b.deletedAt).length }}</span></button
+          <span>{{ books.filter((b) => !b.deletedAt).length }}</span> </span
         ><button class="quiet-button help-button" @click="helpOpen = true">
           <AppIcon name="help" :size="17" /><span>閱讀指南</span>
         </button>
@@ -836,80 +972,7 @@ onBeforeUnmount(() => {
       aria-label="選擇書架備份"
       @change="restoreBackupFile"
     />
-    <main v-show="!shelfOpen">
-      <section class="notebook-heading" aria-labelledby="document-title">
-        <div>
-          <div class="eyebrow"><span></span> 你的私人閱讀空間</div>
-          <h1 id="document-title">{{ title }}</h1>
-          <p>把散落的知識，收進一本好讀的筆記。</p>
-        </div>
-        <div class="document-badge">
-          <AppIcon name="book" :size="18" /><span
-            >閱讀筆記 <i>·</i> {{ pages.length || "—" }} 頁</span
-          >
-        </div>
-      </section>
-      <section class="toolbar" aria-label="筆記本工具列">
-        <div class="toolbar-left">
-          <button
-            class="toolbar-button"
-            :class="{ selected: searchOpen }"
-            @click="toggleSearch"
-          >
-            <AppIcon name="search" /><span>搜尋筆記</span><kbd>/</kbd>
-          </button>
-        </div>
-        <div class="toolbar-right">
-          <button
-            class="toolbar-button edit-current-button"
-            :disabled="busy || turning || !doc || !!doc.pdfAssetId"
-            :title="
-              doc?.pdfAssetId
-                ? 'PDF 保留原貌；文字修改請另建圖文筆記'
-                : '編輯這本筆記'
-            "
-            @click="
-              richNew = false;
-              editorOpen = true;
-            "
-          >
-            <AppIcon name="edit" :size="16" />編輯
-          </button>
-          <button
-            class="toolbar-button text-entry-button"
-            :disabled="busy || turning"
-            @click="
-              richNew = true;
-              editorOpen = true;
-            "
-          >
-            <AppIcon name="image" :size="17" />圖文筆記
-          </button>
-          <button
-            class="toolbar-button text-entry-button"
-            :disabled="busy || turning"
-            @click="textOpen = true"
-          >
-            <AppIcon name="edit" :size="17" /><span>貼上文字</span>
-          </button>
-          <span class="local-note"
-            ><AppIcon name="shield" :size="15" />文件只留在你的裝置</span
-          ><button
-            class="import-button"
-            :disabled="busy || turning"
-            @click="importOpen = true"
-          >
-            <AppIcon name="upload" :size="17" />匯入 Word
-          </button>
-          <button
-            class="toolbar-button"
-            :disabled="busy || turning"
-            @click="pdfInput?.click()"
-          >
-            <AppIcon name="file" :size="17" />匯入 PDF
-          </button>
-        </div>
-      </section>
+    <main v-show="!shelfOpen" class="reader-main" aria-label="筆記閱讀區">
       <input
         ref="fileInput"
         id="word-file"
@@ -928,12 +991,14 @@ onBeforeUnmount(() => {
         aria-label="選擇 PDF 文件"
         @change="pickFile"
       />
-      <p v-if="doc?.pdfAssetId" class="pdf-reading-note">
-        PDF 原貌閱讀 · 圖片與文字位置保留 · 點「放大閱讀」可調整倍率 ·
-        修改文字請另建圖文筆記
-      </p>
-
-      <section v-if="searchOpen" class="search-panel" aria-label="全文搜尋">
+      <dialog
+        ref="searchDialog"
+        class="search-panel reader-search"
+        aria-label="全文搜尋"
+        @cancel="searchOpen = false"
+        @close="searchOpen = false"
+        @click="$event.target === searchDialog && (searchOpen = false)"
+      >
         <div class="search-top">
           <div class="search-field">
             <AppIcon name="search" /><input
@@ -942,7 +1007,15 @@ onBeforeUnmount(() => {
               placeholder="搜尋整本筆記，例如 TCP、藍牙…"
               aria-label="搜尋整本筆記"
               @keydown.enter.prevent="
-                selectHit(activeResult + ($event.shiftKey ? -1 : 1))
+                selectHit(activeResult);
+                searchOpen = false;
+              "
+              @keydown.down.prevent="
+                activeResult = (activeResult + 1) % Math.max(1, hits.length)
+              "
+              @keydown.up.prevent="
+                activeResult =
+                  (activeResult - 1 + hits.length) % Math.max(1, hits.length)
               "
             /><button
               v-if="query"
@@ -953,7 +1026,7 @@ onBeforeUnmount(() => {
               <AppIcon name="close" :size="16" />
             </button>
           </div>
-          <span class="result-count">{{
+          <span class="result-count" aria-live="polite">{{
             debouncedQuery ? `${hits.length} 筆結果` : "中文、英文皆可搜尋"
           }}</span
           ><button
@@ -996,7 +1069,10 @@ onBeforeUnmount(() => {
             class="search-result"
             :class="{ active: n === activeResult }"
             :disabled="busy || turning"
-            @click="selectHit(n)"
+            @click="
+              selectHit(n);
+              searchOpen = false;
+            "
           >
             <span class="result-page">第 {{ hit.page + 1 }} 頁</span
             ><span>{{ hit.excerpt }}</span
@@ -1009,14 +1085,7 @@ onBeforeUnmount(() => {
             顯示更多結果（還有 {{ hits.length - resultLimit }} 筆）
           </button>
         </div>
-      </section>
-
-      <div class="reading-context">
-        <span><AppIcon name="file" :size="14" />{{ chapter }}</span
-        ><span class="saved-status"
-          ><span class="status-dot"></span>{{ storageStatus }}</span
-        >
-      </div>
+      </dialog>
       <div
         ref="workspace"
         @pointerup="captureSelection"
@@ -1038,6 +1107,8 @@ onBeforeUnmount(() => {
           :active-hit="activeHit"
           :located="located"
           :disabled="busy"
+          @jump="jumpOpen = true"
+          @enlarge="detailPage = $event"
           @change="changed"
           @turning="setTurning"
         />
@@ -1075,48 +1146,67 @@ onBeforeUnmount(() => {
           {{ label }}</button
         ><button aria-label="取消畫重點" @click="pendingTargets = []">×</button>
       </div>
-      <div class="highlight-entry">
-        <button
-          :disabled="busy || turning"
-          @click="highlightOpen = !highlightOpen"
-        >
-          重點筆記 <span>{{ doc?.annotations?.length || 0 }}</span></button
-        ><span>選取文字，留下你的重點</span>
-      </div>
-      <HighlightPanel
+      <div
         v-if="highlightOpen"
-        :books="books"
-        :active-id="activeId"
-        :selected="selectedAnnotation"
-        @close="highlightOpen = false"
-        @locate="locateAnnotation"
-        @update="updateAnnotation"
-        @remove="removeAnnotation"
-        @undo="undoAnnotation"
-      />
+        class="reader-panel-backdrop"
+        @click.self="highlightOpen = false"
+      >
+        <HighlightPanel
+          v-if="highlightOpen"
+          :books="books"
+          :active-id="activeId"
+          :selected="selectedAnnotation"
+          @close="highlightOpen = false"
+          @locate="locateAnnotation"
+          @update="updateAnnotation"
+          @remove="removeAnnotation"
+          @undo="undoAnnotation"
+        />
+      </div>
       <PaginationBar
+        :open="jumpOpen"
+        @close="jumpOpen = false"
         v-if="pages.length"
         :index="index"
         :total="pages.length"
         :single="size.mobile"
         :disabled="busy || turning"
         @jump="jump"
-        @move="book?.move($event)"
       />
-      <div class="reading-tips">
-        <span class="desktop-tip"
-          ><kbd>←</kbd><kbd>→</kbd> 使用方向鍵翻頁，或點擊紙頁外側邊緣</span
-        ><span class="mobile-tip">左右輕滑，慢慢翻閱</span
-        ><span>你的閱讀進度會自動保存</span>
-      </div>
-      <details v-if="doc?.warnings.length" class="document-warnings" open>
-        <summary>文件提醒（{{ doc.warnings.length }}）</summary>
-        <ul>
-          <li v-for="warning in doc.warnings" :key="warning">{{ warning }}</li>
-        </ul>
-      </details>
+      <aside v-if="infoOpen" class="reader-info" aria-label="文件資訊">
+        <button
+          class="icon-button"
+          aria-label="關閉文件資訊"
+          @click="infoOpen = false"
+        >
+          <AppIcon name="close" />
+        </button>
+        <p role="status">{{ storageStatus }}</p>
+        <p>文件只留在你的裝置，閱讀進度會自動保存。</p>
+        <p v-if="doc?.pdfAssetId">PDF 保留原貌；文字修改請另建圖文筆記。</p>
+        <details v-if="doc?.warnings.length" open>
+          <summary>文件提醒（{{ doc.warnings.length }}）</summary>
+          <ul>
+            <li v-for="warning in doc.warnings" :key="warning">
+              {{ warning }}
+            </li>
+          </ul>
+        </details>
+      </aside>
+      <ReaderDetail
+        v-if="detailPage !== undefined && pages[detailPage]"
+        :pages="pages"
+        :page-index="detailPage"
+        :title="title"
+        :hits="hits"
+        :active-hit="activeHit"
+        :annotations="doc?.annotations"
+        :size="size"
+        @close="closeDetail"
+        @navigate="detailPage = $event"
+      />
     </main>
-    <footer class="site-footer">
+    <footer v-if="shelfOpen" class="site-footer">
       <span
         >頁白 <span class="footer-dot">·</span> 讓閱讀，回到紙上的節奏。</span
       ><span>純前端閱讀 <span class="footer-dot">·</span> 無須登入</span>
@@ -1210,10 +1300,13 @@ onBeforeUnmount(() => {
           <h2>慢一點，讀得更清楚。</h2>
           <p>頁白會依照你的螢幕，自動把內容排入固定紙頁。</p>
           <ul class="help-list">
-            <li>點擊下方按鈕、紙頁邊緣，或使用 ← → 翻頁。</li>
+            <li>點擊書本兩側箭頭，或使用 ← → 翻頁。</li>
             <li>手機左右輕滑可翻頁；長按仍可選取文字。</li>
+            <li>
+              書頁右下角可放大閱讀細節；放大視窗可捲動、調整倍率與逐頁切換。
+            </li>
             <li>使用搜尋找整本筆記，點結果會跳到命中頁。</li>
-            <li>點頁碼或輸入頁碼，即可直接前往指定位置。</li>
+            <li>點書頁底部頁碼，可輸入頁碼或前往第一頁／最後一頁。</li>
             <li>文件與閱讀位置儲存在目前瀏覽器；清除網站資料會移除筆記。</li>
             <li>匯入與貼上預設建立新的一本；貼上也能選擇追加到目前筆記。</li>
             <li>
