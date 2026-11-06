@@ -4,9 +4,9 @@
 
 ## 目前接續位置
 
-1.5.1 修正使用者指出的翻頁遮擋、放大提示、首末頁圖示與放大工具列配置，並完成可見原生控制元件盤點。完整 build／7 個瀏覽器情境已通過；正準備部署，上一個確定上線的是下節的 1.5.0，完成本輪後追加精確發布證據。
+1.5.1 已完成並部署：翻頁控制不遮擋、放大鏡提示、首末頁圖示修正、放大工具列左縮放／中間翻頁與頁數，以及全站控制元件外觀統一。完整 build／7 個情境通過；夜間選單另補畫面與操作驗證。目前沒有未完成程式，等待使用者下一個回饋。
 
-新入口：`ChoiceSelect.vue`（共用選單，Popover top layer 避免彈窗／編輯器裁切）、`DisclosurePanel.vue`（提醒展開）、`tests/controls.spec.ts`（2 個新情境）、[UI 控制元件盤點](UI-CONTROLS.md)。不要把有完整樣式的語意化 dialog／input 誤當成需要移除的瀏覽器原生外觀。
+新入口：`ChoiceSelect.vue`（共用選單，Popover top layer 避免彈窗／編輯器裁切）、`DisclosurePanel.vue`（提醒展開）、`tests/controls.spec.ts`（2 個新情境）、[UI 控制元件盤點](UI-CONTROLS.md)。保留有完整樣式的語意化 dialog／input 與原生鍵盤能力。
 
 ## 每輪部署方式與目前狀態
 
@@ -15,6 +15,18 @@
 - 線上網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
+
+### 最新部署：1.5.1
+
+- 原始碼版本：1.5.1；Sites 版本：9。
+- 部署來源 commit：`282fe63ef00d9ac22868218efd601cd57a74c4c8`。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_f857e59b9e80819192b53a1b684483ce`
+- deployment_id：`appgdep_6aedca537e8c81918b11f1aafc601580`
+- 結果：`succeeded`，2026-11-06 20:38（Asia/Taipei）。
+- 本次紀錄回填為純文件變更，實際部署程式仍以上述來源 commit 為準。
+
+### 先前部署：1.5.0
+
 - 本輪原始碼 1.5.0，Sites 版本 8：`succeeded`，2026-11-06 20:18（Asia/Taipei）。
 - 實際部署來源：`3b45fdcc6584613f9ed506203302a88167bb014e`；與當時 GitHub main 相同。
 - saved version ID：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_e348a48bb41481919c821ac771e48c57`
@@ -83,7 +95,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-目前 1.5.1 程式已完成；完整 build／7 個瀏覽器情境已通過，發布結果仍待回填。下一步推 GitHub／Sites；不要把 1.5.0 的發布證據當成本輪。下次中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
+目前 1.5.1 已驗證、推上 GitHub 並部署成功，沒有半成品工作。下一輪中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei

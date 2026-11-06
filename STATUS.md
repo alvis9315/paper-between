@@ -24,7 +24,7 @@ tags:
 
 ## 正在進行
 
-1.5.1 已通過完整 build／7 個瀏覽器情境，正準備部署。下方部署紀錄目前仍為上一個已成功上線的 1.5.0；本輪成功後追加證據。
+1.5.1 已部署成功；目前等待使用者對修正後的閱讀控制、彈窗配置與選單外觀回饋。沒有未完成的程式工作。
 
 ## 下一個明確動作
 
@@ -46,6 +46,18 @@ tags:
 
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
+
+### 最新：1.5.1
+
+- 原始碼版本：1.5.1；Sites 版本：9。
+- 部署來源 commit：`282fe63ef00d9ac22868218efd601cd57a74c4c8`。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_f857e59b9e80819192b53a1b684483ce`
+- deployment_id：`appgdep_6aedca537e8c81918b11f1aafc601580`
+- 結果：`succeeded`，2026-11-06 20:38（Asia/Taipei）。
+- 本次紀錄回填為純文件變更，實際部署程式仍以上述來源 commit 為準。
+
+### 歷史：1.5.0
+
 - 原始碼版本：1.5.0；Sites 版本：8。
 - 部署來源 commit：`3b45fdcc6584613f9ed506203302a88167bb014e`（GitHub 與 Sites 來源一致）。
 - version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_e348a48bb41481919c821ac771e48c57`
