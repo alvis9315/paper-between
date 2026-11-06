@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
@@ -16,13 +17,28 @@ import {
   Plus,
   Layers,
   BookOpen,
+  Star,
+  Type,
+  Menu,
+  Upload,
+  Info,
+  Grid2X2,
+  Search,
+  X,
+  ZoomIn,
+  FileText,
+  Zap,
 } from "@lucide/vue";
 import IconAction from "./IconAction.vue";
 import ChoiceSelect from "./ChoiceSelect.vue";
 import ModalShell from "./ModalShell.vue";
-import AppIcon from "./AppIcon.vue";
 import { cardsFromBook, MAX_REVIEW_CARDS } from "../core/reviewCards";
-import { mediaUrl } from "../core/media";
+import { mediaUrl, cleanupPending } from "../core/media";
+import {
+  answerHtml,
+  highlightCardHtml,
+  normalizeCardSearch,
+} from "../core/cardContent";
 import type { BookRecord, ReviewCard } from "../core/model";
 const props = defineProps<{
   cards: ReviewCard[];
@@ -36,130 +52,339 @@ const emit = defineEmits<{
   source: [id: string];
   import: [kind: "pdf" | "word"];
 }>();
-const query = ref(""),
+const preferenceKey = "paper-between-card-view";
+let saved: { selected?: string; font?: number } = {};
+try {
+  saved = JSON.parse(localStorage.getItem(preferenceKey) || "{}") || {};
+} catch {
+  /* Reading works without storage. */
+}
+const selectedId = ref(
+  typeof saved.selected === "string" ? saved.selected : "",
+);
+const font = ref([17, 19, 21].includes(saved.font || 0) ? saved.font! : 17);
+const fontLabel = computed(
+  () => ({ 17: "標準", 19: "較大", 21: "最大" })[font.value],
+);
+const media = window.matchMedia("(max-width: 900px)");
+const mobile = ref(media.matches);
+const draftQuery = ref(""),
+  query = ref(""),
   topic = ref(""),
-  index = ref(0),
+  sourceFilter = ref(""),
+  sectionFilter = ref("");
+const favoritesOnly = ref(false),
   showResults = ref(false),
-  showGenerate = ref(false),
+  showTags = ref(false),
+  showHelp = ref(false),
+  showSource = ref(false),
+  showImage = ref(false);
+const showGenerate = ref(false),
   showEdit = ref(false),
-  deleteOpen = ref(false);
-const resultLimit = ref(60);
+  deleteOpen = ref(false),
+  importing = ref(false),
+  importError = ref("");
+const resultLimit = ref(60),
+  imageZoom = ref("1");
+const searchInput = ref<HTMLInputElement>(),
+  deckInput = ref<HTMLInputElement>(),
+  tools = ref<HTMLElement>(),
+  content = ref<HTMLElement>(),
+  resultList = ref<HTMLElement>();
 const editing = shallowRef<ReviewCard>();
 const title = ref(""),
   body = ref(""),
   tags = ref(""),
+  summary = ref(""),
   error = ref("");
+const kindLabel = {
+  review: "觀念整理",
+  past: "考古題",
+  practice: "練習題",
+  glossary: "名詞對照",
+};
+const tokens = computed(() =>
+  query.value.trim().split(/\s+/).map(normalizeCardSearch).filter(Boolean),
+);
+const indexed = computed(() =>
+  props.cards.map((card, order) => ({
+    card,
+    order,
+    title: normalizeCardSearch(card.title),
+    tags: normalizeCardSearch(
+      [...card.tags, card.section || "", ...(card.keywords || [])].join(" "),
+    ),
+    summary: normalizeCardSearch(card.summary || ""),
+    all: normalizeCardSearch(
+      [
+        card.title,
+        card.body,
+        card.summary,
+        card.context,
+        card.sourceTitle,
+        card.section,
+        ...card.tags,
+        ...(card.keywords || []),
+      ].join(" "),
+    ),
+  })),
+);
+const base = computed(() =>
+  indexed.value.filter(
+    ({ card, all }) =>
+      (!sourceFilter.value || card.sourceTitle === sourceFilter.value) &&
+      (!favoritesOnly.value || card.favorite) &&
+      tokens.value.every((t) => all.includes(t)),
+  ),
+);
+const filtered = computed(() =>
+  base.value
+    .filter(
+      ({ card }) =>
+        (!topic.value || card.tags.includes(topic.value)) &&
+        (!sectionFilter.value || card.section === sectionFilter.value),
+    )
+    .map((item) => ({
+      ...item,
+      score: tokens.value.reduce(
+        (n, t) =>
+          n +
+          (item.title.includes(t) ? 90 : 0) +
+          (item.tags.includes(t) ? 35 : 0) +
+          (item.summary.includes(t) ? 20 : 0),
+        0,
+      ),
+    }))
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .map((x) => x.card),
+);
+const current = computed(
+  () =>
+    filtered.value.find((c) => c.id === selectedId.value) || filtered.value[0],
+);
+const index = computed(() =>
+  Math.max(
+    0,
+    filtered.value.findIndex((c) => c.id === current.value?.id),
+  ),
+);
+const sourceGroups = computed(() => [
+  ...new Set(props.cards.map((c) => c.sourceTitle)),
+]);
 const topics = computed(() =>
   [...new Set(props.cards.flatMap((c) => c.tags))].sort((a, b) =>
     a.localeCompare(b, "zh-Hant"),
   ),
 );
-const filtered = computed(() => {
-  const words = query.value
+const visibleTopics = computed(() =>
+  topics.value.filter(
+    (tag) =>
+      base.value.some(({ card }) => card.tags.includes(tag)) ||
+      topic.value === tag,
+  ),
+);
+const favoriteCount = computed(
+  () => props.cards.filter((c) => c.favorite).length,
+);
+const hasFilter = computed(
+  () =>
+    !!(
+      query.value ||
+      topic.value ||
+      sourceFilter.value ||
+      sectionFilter.value ||
+      favoritesOnly.value
+    ),
+);
+const related = computed(() =>
+  current.value
+    ? props.cards
+        .filter(
+          (c) =>
+            c.id !== current.value!.id &&
+            c.kind !== "glossary" &&
+            c.tags.some((t) => current.value!.tags.includes(t)),
+        )
+        .sort(
+          (a, b) =>
+            Number(b.sourceTitle !== current.value!.sourceTitle) -
+            Number(a.sourceTitle !== current.value!.sourceTitle),
+        )
+        .slice(0, 3)
+    : [],
+);
+const highlightedAnswer = computed(() =>
+  current.value ? answerHtml(current.value, query.value) : "",
+);
+const imageUrl = ref(""),
+  imageError = ref("");
+const sources = computed(() => props.books.filter((b) => !b.deletedAt));
+const sourceAvailable = computed(
+  () =>
+    !!current.value?.sourceBookId &&
+    sources.value.some((b) => b.document.id === current.value!.sourceBookId),
+);
+const sourceId = ref(""),
+  mode = ref<"content" | "highlights">("content");
+watch(
+  sources,
+  (value) => {
+    if (!value.some((b) => b.document.id === sourceId.value))
+      sourceId.value = value[0]?.document.id || "";
+  },
+  { immediate: true },
+);
+const source = computed(() =>
+  sources.value.find((b) => b.document.id === sourceId.value),
+);
+const generated = computed(() =>
+  source.value
+    ? cardsFromBook(source.value, mode.value).filter(
+        (c) =>
+          !props.cards.some((existing) => existing.sourceKey === c.sourceKey),
+      )
+    : [],
+);
+function topicCount(tag: string) {
+  return base.value.filter(({ card }) => card.tags.includes(tag)).length;
+}
+function sourceCount(name: string) {
+  return props.cards.filter((c) => c.sourceTitle === name).length;
+}
+function highlight(text: string) {
+  const node = document.createElement("span");
+  node.textContent = text;
+  return highlightCardHtml(node.innerHTML, query.value);
+}
+function snippet(card: ReviewCard) {
+  const text = card.summary || card.body;
+  const match = query.value
     .trim()
-    .toLocaleLowerCase()
     .split(/\s+/)
-    .map((word) => word.replace(/^#/, ""))
-    .filter(Boolean);
-  return props.cards.filter(
-    (c) =>
-      (!topic.value || c.tags.includes(topic.value)) &&
-      words.every((w) =>
-        [c.title, c.body, c.sourceTitle, ...c.tags]
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(w),
-      ),
-  );
+    .find((t) => card.body.toLocaleLowerCase().includes(t.toLocaleLowerCase()));
+  if (match && !text.toLocaleLowerCase().includes(match.toLocaleLowerCase())) {
+    const start = Math.max(
+      0,
+      card.body.toLocaleLowerCase().indexOf(match.toLocaleLowerCase()) - 24,
+    );
+    return `${start ? "…" : ""}${card.body.slice(start, start + 115)}`;
+  }
+  return text.slice(0, 115);
+}
+function persistView() {
+  try {
+    localStorage.setItem(
+      preferenceKey,
+      JSON.stringify({ selected: current.value?.id, font: font.value }),
+    );
+  } catch {
+    /* Optional preference. */
+  }
+}
+watch([font, () => current.value?.id], async () => {
+  persistView();
+  await nextTick();
+  if (content.value) content.value.scrollTop = 0;
 });
-const current = computed(() => filtered.value[index.value]);
-const imageUrl = ref("");
-const searchInput = ref<HTMLInputElement>();
 watch(
   () => current.value?.image?.mediaId,
   async (id) => {
     imageUrl.value = "";
-    if (id) {
+    imageError.value = "";
+    if (id)
       try {
         const url = await mediaUrl(id);
         if (current.value?.image?.mediaId === id) imageUrl.value = url;
       } catch {
-        error.value = "小卡圖片遺失，請從 ZIP 備份還原。";
+        imageError.value = "題圖遺失，請從 ZIP 備份還原。";
       }
-    }
   },
   { immediate: true },
 );
-watch([query, topic], () => {
-  index.value = 0;
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+const composing = ref(false);
+function applySearch() {
+  clearTimeout(searchTimer);
+  query.value = draftQuery.value;
+}
+function inputSearch(e: Event) {
+  if (composing.value || (e as InputEvent).isComposing) return;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(applySearch, 120);
+}
+function clearSearch() {
+  draftQuery.value = "";
+  query.value = "";
+  searchInput.value?.focus();
+}
+function reset() {
+  clearTimeout(searchTimer);
+  draftQuery.value = "";
+  query.value = "";
+  topic.value = "";
+  sectionFilter.value = "";
+  sourceFilter.value = "";
+  favoritesOnly.value = false;
+}
+watch([query, topic, sourceFilter, sectionFilter, favoritesOnly], () => {
+  selectedId.value = filtered.value[0]?.id || "";
   resultLimit.value = 60;
+  if (mobile.value) showResults.value = true;
 });
-watch(
-  () => filtered.value.length,
-  (count) => (index.value = Math.min(index.value, Math.max(0, count - 1))),
-);
-watch(topics, (list) => {
-  if (topic.value && !list.includes(topic.value)) topic.value = "";
-});
+function closeTools() {
+  if (mobile.value) tools.value?.hidePopover();
+}
+function selectTopic(tag: string) {
+  sectionFilter.value = "";
+  topic.value = topic.value === tag ? "" : tag;
+  showTags.value = false;
+}
+function selectSource(name: string) {
+  sourceFilter.value = name;
+  sectionFilter.value = "";
+  if (
+    topic.value &&
+    !props.cards.some(
+      (c) => (!name || c.sourceTitle === name) && c.tags.includes(topic.value),
+    )
+  )
+    topic.value = "";
+}
+function selectSection(section: string, group: string) {
+  topic.value = "";
+  sourceFilter.value = group;
+  sectionFilter.value = section;
+  showTags.value = false;
+}
+function choose(card: ReviewCard) {
+  selectedId.value = card.id;
+  showResults.value = false;
+  searchInput.value?.blur();
+}
+async function chooseRelated(card: ReviewCard) {
+  reset();
+  await nextTick();
+  choose(card);
+}
 function move(delta: number) {
-  index.value = Math.max(
-    0,
-    Math.min(filtered.value.length - 1, index.value + delta),
-  );
+  const card = filtered.value[index.value + delta];
+  if (card) choose(card);
 }
-function keys(e: KeyboardEvent) {
-  if (
-    !(e.target as HTMLElement).closest("dialog") &&
-    (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") ||
-      (e.key === "/" && !(e.target as HTMLElement).closest("input,textarea")))
-  ) {
-    e.preventDefault();
-    searchInput.value?.focus();
-    return;
-  }
-
-  if (
-    (e.target as HTMLElement).closest(
-      'input,textarea,dialog,[role="combobox"]',
-    ) ||
-    e.metaKey ||
-    e.ctrlKey ||
-    window.getSelection()?.toString()
-  )
-    return;
-  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-    e.preventDefault();
-    move(e.key === "ArrowRight" ? 1 : -1);
-  }
-}
-let touch: { x: number; y: number; time: number } | undefined;
-function touchStart(e: TouchEvent) {
-  if (e.touches.length === 1 && !window.getSelection()?.toString())
-    touch = {
-      x: e.touches[0]!.clientX,
-      y: e.touches[0]!.clientY,
-      time: Date.now(),
-    };
-}
-function touchEnd(e: TouchEvent) {
-  if (!touch) return;
-  const point = e.changedTouches[0]!,
-    dx = point.clientX - touch.x,
-    dy = point.clientY - touch.y;
-  if (
-    Math.abs(dx) > 60 &&
-    Math.abs(dx) > Math.abs(dy) * 1.6 &&
-    Date.now() - touch.time < 700 &&
-    !window.getSelection()?.toString()
-  )
-    move(dx < 0 ? 1 : -1);
-  touch = undefined;
+function toggleFavorite() {
+  if (current.value)
+    emit("save", {
+      ...current.value,
+      favorite: !current.value.favorite,
+      updatedAt: Date.now(),
+    });
 }
 function edit(card?: ReviewCard) {
+  closeTools();
   editing.value = card;
   title.value = card?.title || "";
   body.value = card?.body || "";
   tags.value = card?.tags.join("，") || "";
+  summary.value = card?.summary || "";
   error.value = "";
   showEdit.value = true;
 }
@@ -184,264 +409,691 @@ function save() {
     error.value = "最多保存 2000 張小卡，請先整理或備份。";
     return;
   }
-  emit("save", {
+  const card: ReviewCard = {
     ...editing.value,
     id: editing.value?.id || crypto.randomUUID(),
     title: title.value.trim(),
     body: body.value.trim(),
     tags: parsedTags,
+    summary: summary.value.trim(),
+    answerHtml:
+      editing.value?.body === body.value.trim()
+        ? editing.value.answerHtml
+        : undefined,
     sourceTitle: editing.value?.sourceTitle || "自建小卡",
     createdAt: editing.value?.createdAt || Date.now(),
     updatedAt: Date.now(),
-  });
+  };
+  emit("save", card);
+  selectedId.value = card.id;
   showEdit.value = false;
+  showResults.value = false;
 }
-const sources = computed(() => props.books.filter((b) => !b.deletedAt));
-const sourceId = ref(""),
-  mode = ref<"content" | "highlights">("content");
-watch(
-  sources,
-  (value) => {
-    if (!value.some((b) => b.document.id === sourceId.value))
-      sourceId.value = value[0]?.document.id || "";
-  },
-  { immediate: true },
-);
-const source = computed(() =>
-  sources.value.find((b) => b.document.id === sourceId.value),
-);
-const generated = computed(() =>
-  source.value
-    ? cardsFromBook(source.value, mode.value).filter(
-        (c) =>
-          !props.cards.some((existing) => existing.sourceKey === c.sourceKey),
-      )
-    : [],
-);
-function generate() {
+async function generate() {
   if (props.cards.length + generated.value.length > MAX_REVIEW_CARDS) {
     error.value = "超過 2000 張小卡，請改用重點摘錄或先整理。";
     return;
   }
-  emit("add", generated.value);
-  query.value = "";
-  topic.value = "";
-  index.value = props.cards.length;
+  const fresh = generated.value;
+  emit("add", fresh);
+  reset();
+  await nextTick();
+  selectedId.value = fresh[0]?.id || "";
   showGenerate.value = false;
+  showResults.value = false;
 }
-onMounted(() => window.addEventListener("keydown", keys));
-onBeforeUnmount(() => window.removeEventListener("keydown", keys));
+function generateDialog() {
+  closeTools();
+  error.value = "";
+  showGenerate.value = true;
+}
+function pickDeck() {
+  closeTools();
+  deckInput.value?.click();
+}
+async function loadDeck(event: Event) {
+  const input = event.target as HTMLInputElement,
+    file = input.files?.[0];
+  if (!file || props.busy || importing.value) return;
+  importing.value = true;
+  try {
+    const { importCardDeck } = await import("../core/cardImport");
+    const cards = await importCardDeck(file);
+    const keys = new Set(props.cards.map((c) => c.sourceKey));
+    const fresh = cards.filter((c) => !keys.has(c.sourceKey));
+    if (props.cards.length + fresh.length > MAX_REVIEW_CARDS)
+      throw new Error("加入後會超過 2000 張小卡，請先整理或分批匯入。");
+    emit("add", fresh);
+    if (fresh.length) {
+      reset();
+      await nextTick();
+      selectedId.value = fresh[0]!.id;
+      showResults.value = false;
+    }
+  } catch (e) {
+    importError.value =
+      e instanceof Error ? e.message : "無法讀取這份小卡，原有資料已保留。";
+    cleanupPending(
+      props.books.map((b) => b.document),
+      props.cards.flatMap((c) => (c.image ? [c.image.mediaId] : [])),
+    );
+  } finally {
+    importing.value = false;
+    input.value = "";
+  }
+}
+function cycleFont() {
+  font.value = font.value === 17 ? 19 : font.value === 19 ? 21 : 17;
+}
+function resized(event: MediaQueryListEvent) {
+  mobile.value = event.matches;
+  showResults.value = false;
+}
+function keys(e: KeyboardEvent) {
+  const target = e.target as HTMLElement;
+  if (
+    document.querySelector("dialog[open]") ||
+    target.closest("[popover]:popover-open")
+  )
+    return;
+  if (
+    ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") ||
+    (e.key === "/" && !target.closest("input,textarea,[contenteditable]"))
+  ) {
+    e.preventDefault();
+    searchInput.value?.focus();
+    return;
+  }
+  if (
+    target.closest(
+      'input,textarea,dialog,[role="combobox"],.card-table-scroll',
+    ) ||
+    e.metaKey ||
+    e.ctrlKey ||
+    e.altKey ||
+    window.getSelection()?.toString() ||
+    (mobile.value && showResults.value)
+  )
+    return;
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    e.preventDefault();
+    move(e.key === "ArrowRight" ? 1 : -1);
+  }
+}
+let touch: { x: number; y: number; time: number } | undefined;
+function touchStart(e: TouchEvent) {
+  touch = undefined;
+  if (
+    e.touches.length === 1 &&
+    !(e.target as HTMLElement).closest("button,input,.card-table-scroll") &&
+    !window.getSelection()?.toString()
+  )
+    touch = {
+      x: e.touches[0]!.clientX,
+      y: e.touches[0]!.clientY,
+      time: Date.now(),
+    };
+}
+function touchEnd(e: TouchEvent) {
+  if (!touch) return;
+  const point = e.changedTouches[0],
+    dx = point ? point.clientX - touch.x : 0,
+    dy = point ? point.clientY - touch.y : 0;
+  if (
+    Math.abs(dx) > 60 &&
+    Math.abs(dx) > Math.abs(dy) * 1.6 &&
+    Date.now() - touch.time < 700 &&
+    !window.getSelection()?.toString()
+  )
+    move(dx < 0 ? 1 : -1);
+  touch = undefined;
+}
+onMounted(() => {
+  window.addEventListener("keydown", keys);
+  media.addEventListener("change", resized);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", keys);
+  media.removeEventListener("change", resized);
+  clearTimeout(searchTimer);
+});
 </script>
+
 <template>
-  <main class="study-page">
-    <div class="study-heading">
-      <div>
-        <h1>考前小卡</h1>
-        <p>搜尋重點，一次專心看一張。</p>
-      </div>
-      <div class="study-actions">
-        <button
-          aria-label="新增小卡"
-          class="toolbar-button"
-          :disabled="busy"
-          @click="edit()"
-        >
-          <Plus :size="17" /><span class="study-action-label"
-            >新增小卡</span
-          ></button
-        ><button
-          aria-label="從筆記建立"
-          class="toolbar-button"
-          :disabled="busy"
-          @click="
-            error = '';
-            showGenerate = true;
-          "
-        >
-          <Layers :size="17" /><span class="study-action-label"
-            >從筆記建立</span
-          >
-        </button>
-      </div>
-    </div>
+  <main
+    class="study-page"
+    :style="{ '--card-font-size': `${font}px` }"
+    :aria-busy="importing"
+  >
+    <h1 class="visually-hidden">考前小卡</h1>
+    <input
+      id="card-deck-file"
+      ref="deckInput"
+      class="visually-hidden"
+      type="file"
+      accept=".html,.htm,.json,text/html,application/json"
+      aria-label="選擇小卡 HTML 或 JSON"
+      @change="loadDeck"
+    />
     <div class="study-controls">
       <label class="study-search"
-        ><AppIcon name="search" /><input
+        ><Search :size="20" /><input
           ref="searchInput"
-          v-model="query"
+          v-model="draftQuery"
           aria-label="搜尋小卡"
-          placeholder="搜尋標題、內容或主題…" /><button
-          v-if="query"
+          placeholder="搜尋關鍵字、縮寫或題目…"
+          maxlength="240"
+          autocomplete="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          @input="inputSearch"
+          @compositionstart="composing = true"
+          @compositionend="
+            composing = false;
+            applySearch();
+          "
+          @keydown.enter="
+            if (!$event.isComposing) {
+              applySearch();
+              searchInput?.blur();
+            }
+          "
+          @keydown.esc="
+            clearSearch();
+            searchInput?.blur();
+          "
+        /><button
+          v-if="draftQuery"
           class="icon-button"
           aria-label="清除小卡搜尋"
-          @click="query = ''"
+          @click="clearSearch"
         >
-          <AppIcon name="close" /></button
-      ></label>
-      <button
-        :aria-label="`${query || topic ? '相關' : '全部'}小卡 ${filtered.length}`"
-        class="toolbar-button"
-        :disabled="!filtered.length"
-        @click="showResults = true"
+          <X :size="17" /></button
+        ><kbd v-else class="study-search-key" aria-hidden="true">/</kbd></label
       >
-        <List :size="17" /><span class="study-result-label"
-          >{{ query || topic ? "相關" : "全部" }}小卡 </span
-        ><span>{{ filtered.length }}</span>
-      </button>
-    </div>
-    <div class="study-topics" role="group" aria-label="小卡主題標籤">
-      <button :aria-pressed="!topic" @click="topic = ''">
-        全部 {{ cards.length }}</button
-      ><button
-        v-for="tag in topics"
-        :key="tag"
-        :aria-pressed="topic === tag"
-        @click="topic = topic === tag ? '' : tag"
-      >
-        # {{ tag }}
-      </button>
-    </div>
-    <p v-if="query || topic" class="study-filter-status" role="status">
-      {{ filtered.length }} 張相關小卡；左右切換會留在這組結果。<button
+      <IconAction
+        v-if="mobile"
+        compact
+        :icon="Menu"
+        label="小卡操作選單"
         @click="
-          query = '';
-          topic = '';
+          searchInput?.blur();
+          tools?.togglePopover();
         "
+      />
+      <div
+        ref="tools"
+        class="study-tools"
+        :popover="mobile ? 'auto' : undefined"
+        role="group"
+        aria-label="小卡操作"
       >
-        清除篩選
-      </button>
-    </p>
-    <template v-if="current">
-      <article
-        class="review-card"
-        :data-card-id="current.id"
-        aria-label="目前小卡"
-        @touchstart.passive="touchStart"
-        @touchend.passive="touchEnd"
-        @touchcancel="touch = undefined"
-      >
-        <header>
-          <span>{{ current.tags[0] || "自由複習" }}</span
-          ><span>{{ index + 1 }} / {{ filtered.length }}</span>
-        </header>
-        <div class="review-content">
-          <h2>{{ current.title }}</h2>
-          <img
-            v-if="imageUrl"
-            :src="imageUrl"
-            :alt="current.image?.alt || '複習圖解'"
-          />
-          <p>{{ current.body }}</p>
-        </div>
-        <footer>
-          <span>{{ current.sourceTitle }}</span
-          ><IconAction
-            v-if="current.sourceBookId"
-            compact
-            :icon="BookOpen"
-            label="查看小卡來源"
-            :disabled="
-              busy ||
-              !sources.some((b) => b.document.id === current?.sourceBookId)
-            "
-            @click="emit('source', current.sourceBookId!)"
-          /><IconAction
-            compact
-            :icon="SquarePen"
-            label="編輯小卡"
-            @click="edit(current)"
-          /><IconAction
-            compact
-            :icon="Trash2"
-            label="刪除小卡"
-            danger
-            @click="deleteOpen = true"
-          />
-        </footer>
-      </article>
-      <div class="study-navigation">
+        <button
+          class="study-font"
+          :aria-label="`調整閱讀字級，目前${fontLabel}`"
+          @click="cycleFont"
+        >
+          <Type :size="19" /><span>{{ fontLabel }}</span>
+        </button>
         <IconAction
-          :icon="ChevronLeft"
-          label="上一張小卡"
-          :disabled="index === 0"
-          @click="move(-1)"
-        /><span aria-live="polite">{{ index + 1 }} / {{ filtered.length }}</span
-        ><IconAction
-          :icon="ChevronRight"
-          label="下一張小卡"
-          :disabled="index + 1 >= filtered.length"
-          @click="move(1)"
+          v-if="cards.length"
+          :compact="!mobile"
+          :icon="Upload"
+          label="匯入小卡 HTML／JSON"
+          touch-label="匯入小卡"
+          :disabled="busy || importing"
+          @click="pickDeck"
+        />
+        <IconAction
+          :compact="!mobile"
+          :icon="Plus"
+          label="新增小卡"
+          :disabled="busy || importing"
+          @click="edit()"
+        />
+        <IconAction
+          v-if="cards.length"
+          :compact="!mobile"
+          :icon="Layers"
+          label="從筆記建立"
+          :disabled="busy || importing"
+          @click="generateDialog"
+        />
+        <IconAction
+          :compact="!mobile"
+          :icon="Info"
+          label="小卡使用說明"
+          @click="
+            closeTools();
+            showHelp = true;
+          "
+        />
+      </div>
+    </div>
+    <template v-if="cards.length">
+      <div class="study-filter-row">
+        <div class="study-source-tabs" role="group" aria-label="小卡資料來源">
+          <button
+            :aria-pressed="!sourceFilter"
+            aria-label="全部來源"
+            @click="selectSource('')"
+          >
+            全部 <small>{{ cards.length }}</small>
+          </button>
+          <button
+            v-for="name in sourceGroups"
+            :key="name"
+            :aria-pressed="sourceFilter === name"
+            :aria-label="`來源：${name}`"
+            @click="selectSource(name)"
+          >
+            <span>{{ name }}</span
+            ><small>{{ sourceCount(name) }}</small>
+          </button>
+        </div>
+        <button
+          class="study-favorites"
+          aria-label="只看收藏小卡"
+          :aria-pressed="favoritesOnly"
+          @click="favoritesOnly = !favoritesOnly"
+        >
+          <Star :size="16" />收藏 <small>{{ favoriteCount }}</small>
+        </button>
+      </div>
+      <div class="study-topic-row">
+        <div class="study-topics" role="group" aria-label="小卡主題標籤">
+          <button
+            :aria-pressed="!topic && !sectionFilter"
+            :aria-label="`全部小卡 ${cards.length}`"
+            @click="
+              topic = '';
+              sectionFilter = '';
+            "
+          >
+            全部 <small>{{ base.length }}</small>
+          </button>
+          <button
+            v-for="tag in visibleTopics"
+            :key="tag"
+            :aria-pressed="topic === tag"
+            :aria-label="`# ${tag}`"
+            @click="selectTopic(tag)"
+          >
+            <span># {{ tag }}</span
+            ><small>{{ topicCount(tag) }}</small>
+          </button>
+        </div>
+        <IconAction
+          compact
+          :icon="Grid2X2"
+          label="全部小卡標籤"
+          @click="showTags = true"
         />
       </div>
     </template>
-    <div v-else class="study-empty">
-      <Layers :size="36" />
-      <h2>{{ cards.length ? "沒有符合的小卡" : "準備你的第一組複習小卡" }}</h2>
-      <p>
-        {{
-          cards.length
-            ? "換個關鍵字，或清除主題篩選。"
-            : "可以自行新增，或從筆記標題、段落與重點摘錄建立。"
-        }}
-      </p>
-      <button
-        v-if="cards.length"
-        class="toolbar-button"
-        @click="
-          query = '';
-          topic = '';
-        "
-      >
-        清除篩選
-      </button>
-    </div>
-    <div v-if="!cards.length" class="study-import">
-      <span>匯入資料建立小卡</span
-      ><button
-        class="toolbar-button"
-        :disabled="busy"
-        @click="emit('import', 'word')"
-      >
-        匯入 Word</button
-      ><button
-        class="toolbar-button"
-        :disabled="busy"
-        @click="emit('import', 'pdf')"
-      >
-        匯入 PDF
-      </button>
-    </div>
-    <p class="study-note">
-      小卡會保存在這個瀏覽器，並包含在書架 ZIP
-      備份中。內容來自原文，請確認後再作應考資料。
+    <p class="visually-hidden study-filter-status" role="status">
+      {{ filtered.length }} 張相關小卡{{
+        sectionFilter || topic ? `，${sectionFilter || topic}` : ""
+      }}
     </p>
+    <div v-if="importing" class="study-loading" role="status">
+      正在匯入小卡…
+    </div>
+    <div v-if="!cards.length" class="study-empty">
+      <Layers :size="32" />
+      <h2>還沒有小卡</h2>
+      <div class="study-empty-actions">
+        <button
+          class="import-button"
+          :disabled="busy || importing"
+          @click="pickDeck"
+        >
+          <Upload :size="17" />匯入小卡</button
+        ><button
+          class="toolbar-button"
+          :disabled="busy || importing"
+          @click="generateDialog"
+        >
+          從筆記建立
+        </button>
+      </div>
+    </div>
+    <div
+      v-else
+      class="study-workspace"
+      :class="{ 'mobile-list-view': showResults }"
+    >
+      <aside class="study-results" aria-label="小卡搜尋結果">
+        <header class="study-list-heading">
+          <span
+            >{{ query ? "搜尋結果" : sectionFilter || topic || "題目清單" }}
+            <small>{{ filtered.length }} 張</small></span
+          ><button v-if="hasFilter" class="study-text-button" @click="reset">
+            重設</button
+          ><button
+            class="study-mobile-back study-text-button"
+            :disabled="!current"
+            @click="
+              showResults = false;
+              searchInput?.blur();
+            "
+          >
+            <ChevronLeft :size="15" />回卡片
+          </button>
+        </header>
+        <div ref="resultList" class="study-result-list">
+          <button
+            v-for="card in filtered.slice(0, resultLimit)"
+            :key="card.id"
+            :aria-current="card.id === current?.id ? 'true' : undefined"
+            @click="choose(card)"
+          >
+            <span class="study-result-meta"
+              ><span v-if="card.kind" class="study-kind" :class="card.kind">{{
+                kindLabel[card.kind]
+              }}</span
+              ><span>{{ card.sourceTitle }}</span
+              ><Star v-if="card.favorite" :size="12" class="saved-star" /></span
+            ><strong v-html="highlight(card.title)"></strong
+            ><span
+              class="study-result-snippet"
+              v-html="highlight(snippet(card))"
+            ></span>
+          </button>
+          <button
+            v-if="filtered.length > resultLimit"
+            class="study-load-more"
+            @click="resultLimit += 60"
+          >
+            顯示更多小卡（還有 {{ filtered.length - resultLimit }} 張）
+          </button>
+          <div v-if="!filtered.length" class="study-no-results">
+            <Search :size="25" />
+            <p>沒有符合的小卡</p>
+            <button class="study-text-button" @click="reset">清除篩選</button>
+          </div>
+        </div>
+      </aside>
+      <section class="study-reader" aria-label="閱讀小卡">
+        <button
+          class="study-mobile-results"
+          :aria-label="`${hasFilter ? '相關' : '全部'}小卡 ${filtered.length}`"
+          @click="showResults = true"
+        >
+          <List :size="17" /><span>{{
+            query ? "搜尋結果" : sectionFilter || topic || "題目清單"
+          }}</span
+          ><small>{{ filtered.length }} 張</small><ChevronRight :size="16" />
+        </button>
+        <article
+          v-if="current"
+          class="review-card"
+          :data-card-id="current.id"
+          aria-label="目前小卡"
+          @touchstart.passive="touchStart"
+          @touchend.passive="touchEnd"
+          @touchcancel="touch = undefined"
+        >
+          <div class="study-card-toolbar">
+            <span class="study-card-label">{{
+              current.kind
+                ? kindLabel[current.kind]
+                : current.section || current.tags[0] || current.sourceTitle
+            }}</span>
+            <div class="study-card-actions">
+              <IconAction
+                compact
+                :icon="Star"
+                :label="current.favorite ? '取消收藏這張小卡' : '收藏這張小卡'"
+                :aria-pressed="!!current.favorite"
+                :class="{ 'is-favorite': current.favorite }"
+                :disabled="busy || importing"
+                @click="toggleFavorite"
+              /><IconAction
+                compact
+                :icon="SquarePen"
+                label="編輯小卡"
+                :disabled="busy || importing"
+                @click="edit(current)"
+              /><IconAction
+                compact
+                :icon="Trash2"
+                label="刪除小卡"
+                danger
+                :disabled="busy || importing"
+                @click="deleteOpen = true"
+              />
+            </div>
+          </div>
+          <div
+            ref="content"
+            class="review-content"
+            tabindex="0"
+            aria-label="小卡內容閱讀區"
+          >
+            <h2 v-html="highlight(current.title)"></h2>
+            <div v-if="current.tags.length" class="study-card-tags">
+              <button
+                v-for="tag in current.tags"
+                :key="tag"
+                :aria-label="`主題：${tag}`"
+                @click="selectTopic(tag)"
+              >
+                # {{ tag }}
+              </button>
+            </div>
+            <section v-if="current.summary" class="study-quick-answer">
+              <span><Zap :size="13" />速答</span>
+              <div v-html="highlight(current.summary)"></div>
+            </section>
+            <p v-if="current.context" class="study-context">
+              {{ current.context }}
+            </p>
+            <button
+              v-if="imageUrl"
+              class="study-diagram"
+              aria-label="放大小卡題圖"
+              @click="
+                imageZoom = '1';
+                showImage = true;
+              "
+            >
+              <img :src="imageUrl" :alt="current.image?.alt || '原題圖'" /><span
+                ><ZoomIn :size="14" />原題圖</span
+              >
+            </button>
+            <p v-if="imageError" class="study-image-error" role="alert">
+              {{ imageError }}
+            </p>
+            <h3 v-if="current.summary" class="study-answer-label">
+              {{ current.kind === "glossary" ? "完整名詞對照" : "完整內容" }}
+            </h3>
+            <div
+              class="review-answer"
+              :class="{ 'plain-answer': !current.answerHtml }"
+              v-html="highlightedAnswer"
+            ></div>
+            <div
+              v-if="current.sourcePages?.length || current.sourceBookId"
+              class="study-card-source"
+            >
+              <span
+                >{{ current.sourceTitle
+                }}<template v-if="current.sourcePages?.length">
+                  · 第
+                  {{ current.sourcePages.map((p) => p.page).join("、") }}
+                  頁</template
+                ></span
+              ><button
+                class="study-text-button"
+                aria-label="查看小卡來源"
+                @click="showSource = true"
+              >
+                <FileText :size="15" />原文對照
+              </button>
+            </div>
+            <div v-if="related.length" class="study-related">
+              <span>相關小卡</span>
+              <div>
+                <button
+                  v-for="card in related"
+                  :key="card.id"
+                  @click="chooseRelated(card)"
+                >
+                  {{ card.title }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <nav class="study-navigation" aria-label="小卡分頁">
+            <button
+              :disabled="index === 0"
+              aria-label="上一張小卡"
+              @click="move(-1)"
+            >
+              <ChevronLeft :size="18" /><span>上一張</span></button
+            ><span aria-live="polite"
+              >{{ index + 1 }} / {{ filtered.length }}</span
+            ><button
+              :disabled="index + 1 >= filtered.length"
+              aria-label="下一張小卡"
+              @click="move(1)"
+            >
+              <span>下一張</span><ChevronRight :size="18" />
+            </button>
+          </nav>
+        </article>
+        <div v-else class="study-no-results">
+          <Search :size="28" />
+          <h2>沒有符合的小卡</h2>
+          <button class="toolbar-button" @click="reset">清除篩選</button>
+        </div>
+      </section>
+    </div>
   </main>
+  <ModalShell v-if="showTags" title="全部小卡標籤" @close="showTags = false"
+    ><div class="study-tag-panel">
+      <h3>主題</h3>
+      <div class="study-tag-grid">
+        <button
+          v-for="tag in topics"
+          :key="tag"
+          :aria-pressed="topic === tag"
+          @click="selectTopic(tag)"
+        >
+          # {{ tag }} <small>{{ topicCount(tag) }}</small>
+        </button>
+      </div>
+      <section v-for="group in sourceGroups" :key="group">
+        <h3>{{ group }} · 章節</h3>
+        <div class="study-tag-grid">
+          <button
+            v-for="section in [
+              ...new Set(
+                cards
+                  .filter((c) => c.sourceTitle === group)
+                  .map((c) => c.section)
+                  .filter(Boolean),
+              ),
+            ]"
+            :key="section"
+            @click="selectSection(section!, group)"
+          >
+            {{ section }}
+          </button>
+        </div>
+      </section>
+    </div></ModalShell
+  >
+  <ModalShell v-if="showHelp" title="小卡使用說明" @close="showHelp = false"
+    ><p>
+      搜尋標題、答案、速答與縮寫；多個關鍵字以空白分隔。標籤、來源與收藏可以一起篩選。
+    </p>
+    <p>
+      電腦左側選題、右側閱讀。手機搜尋後先顯示結果，點題目讀單張；左右滑動或箭頭切換同一組結果。
+    </p>
+    <p>
+      Aa 字級有標準、較大、最大三種。題圖可放大，表格可以左右捲動。按 / 或
+      ⌘K／Ctrl K 搜尋，方向鍵換卡。
+    </p>
+    <p>
+      「匯入小卡」可讀取含 cards-data、sources-data、images-data 的小卡
+      HTML，或相同結構的 JSON；不會執行檔案裡的程式。一般 PDF／Word
+      請從「從筆記建立」匯入。
+    </p>
+    <p>
+      收藏、內容與圖片保存在目前瀏覽器，完整書架 ZIP
+      會帶入。換裝置仍需匯入備份；從原文拆出的卡片不是 AI 摘要，可自行校正。
+    </p></ModalShell
+  >
   <ModalShell
-    v-if="showResults"
-    title="小卡搜尋結果"
-    @close="showResults = false"
-    ><p>{{ filtered.length }} 張，點選直接跳到該張；返回後可繼續左右複習。</p>
-    <div class="study-result-list">
+    v-if="showSource && current"
+    title="原文對照"
+    @close="showSource = false"
+    ><div class="study-source-panel">
+      <p>{{ current.sourceTitle }}</p>
+      <p>以下為原頁文字；表格與圖形版面請以原檔為準。</p>
+      <section
+        v-for="sourcePage in current.sourcePages || []"
+        :key="sourcePage.page"
+      >
+        <h3>第 {{ sourcePage.page }} 頁</h3>
+        <pre>{{ sourcePage.text }}</pre>
+      </section>
       <button
-        v-for="(card, n) in filtered.slice(0, resultLimit)"
-        :key="card.id"
+        v-if="sourceAvailable"
+        class="toolbar-button"
         @click="
-          index = n;
-          showResults = false;
+          showSource = false;
+          emit('source', current.sourceBookId!);
         "
       >
-        <span>{{ n + 1 }} · {{ card.tags.join("／") }}</span
-        ><strong>{{ card.title }}</strong>
-        <p>{{ card.body.slice(0, 100) }}</p>
-      </button>
-      <button
-        v-if="filtered.length > resultLimit"
-        class="toolbar-button"
-        @click="resultLimit += 60"
-      >
-        顯示更多小卡（還有 {{ filtered.length - resultLimit }} 張）
+        <BookOpen :size="17" />回到來源筆記
       </button>
     </div></ModalShell
+  >
+  <ModalShell
+    v-if="showImage && current"
+    title="原題圖"
+    wide
+    @close="showImage = false"
+    ><div class="study-image-tools">
+      <ChoiceSelect
+        v-model="imageZoom"
+        label="題圖縮放"
+        :options="[
+          { value: '1', label: '適中' },
+          { value: '1.5', label: '150%' },
+          { value: '2', label: '200%' },
+        ]"
+      />
+    </div>
+    <div class="study-image-scroll">
+      <img
+        :src="imageUrl"
+        :alt="current.image?.alt || '原題圖'"
+        :style="
+          imageZoom === '1'
+            ? { maxWidth: '100%' }
+            : {
+                maxWidth: 'none',
+                width: `${(current.image?.width || 1000) * Number(imageZoom)}px`,
+              }
+        "
+      /></div
+  ></ModalShell>
+  <ModalShell v-if="importError" title="無法匯入小卡" @close="importError = ''"
+    ><p role="alert">{{ importError }}</p>
+    <p>原有小卡與筆記已保留。</p>
+    <button
+      class="import-button"
+      @click="
+        importError = '';
+        pickDeck();
+      "
+    >
+      重新選擇檔案
+    </button></ModalShell
   >
   <ModalShell
     v-if="showEdit"
@@ -454,19 +1106,28 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keys));
           maxlength="160"
           aria-label="小卡標題" /></label
       ><label
-        >主題標籤<span>以逗號分隔，可自行修正匯入的主題。</span
-        ><input
+        >主題標籤<input
           v-model="tags"
           aria-label="小卡標籤"
-          placeholder="例如：無線網路，藍牙" /></label
+          placeholder="以逗號分隔" /></label
       ><label
-        >重點內容<textarea
+        >速答（選填）<textarea
+          v-model="summary"
+          rows="2"
+          maxlength="500"
+          aria-label="小卡速答"
+        /></label
+      ><label
+        >完整內容<textarea
           v-model="body"
           rows="8"
           maxlength="6000"
           aria-label="小卡內容"
         />
       </label>
+      <p v-if="editing?.answerHtml" class="study-edit-hint">
+        修改完整內容會改用文字排版；只改標題、標籤或速答會保留原格式。
+      </p>
       <p v-if="error" role="alert">{{ error }}</p>
       <button class="import-button">儲存小卡</button>
     </form></ModalShell
@@ -496,17 +1157,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keys));
             { value: 'highlights', label: '只用重點摘錄' },
           ]"
       /></label>
-      <p>
-        Word 的標題 1／2
-        會成為主題標籤。沒有標題時使用筆記名稱；長內容會拆成多張，保留原文並允許編輯。
-      </p>
+      <p>依原文標題、段落或重點建立，內容可再校正。</p>
       <p v-if="source?.document.pdfAssetId">
-        PDF 原頁尚未辨識主題；建議先用「圖文重排」整理，或建立後手動校正標籤。
+        原頁文件尚未自動辨識主題；可先用圖文重排整理，再建立小卡。
       </p>
       <div class="study-import">
         <button
           class="toolbar-button"
-          :disabled="busy"
+          :disabled="busy || importing"
           @click="
             showGenerate = false;
             emit('import', 'word');
@@ -515,7 +1173,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keys));
           匯入 Word</button
         ><button
           class="toolbar-button"
-          :disabled="busy"
+          :disabled="busy || importing"
           @click="
             showGenerate = false;
             emit('import', 'pdf');
@@ -551,380 +1209,4 @@ onBeforeUnmount(() => window.removeEventListener("keydown", keys));
     </button></ModalShell
   >
 </template>
-<style scoped>
-.study-page {
-  padding: 24px var(--workspace-gutter) 32px;
-  max-width: 1100px;
-  margin: auto;
-  width: 100%;
-}
-.study-heading,
-.study-actions,
-.study-controls,
-.study-navigation,
-.study-import {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.study-heading {
-  justify-content: space-between;
-  margin-bottom: 22px;
-}
-h1 {
-  font-size: 27px;
-  color: var(--heading);
-}
-.study-heading p,
-.study-note,
-.study-import,
-.study-filter-status {
-  font-size: 12px;
-  color: var(--muted);
-}
-.study-heading p {
-  margin-top: 6px;
-}
-.study-search {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--field);
-  padding: 0 12px;
-}
-.study-search input {
-  flex: 1;
-  width: 0;
-  min-width: 0;
-  min-height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font-size: 16px;
-}
-.study-search:focus-within {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.study-topics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 16px 0;
-  max-height: 116px;
-  overflow: auto;
-  padding: 3px;
-}
-.study-topics button {
-  min-height: 36px;
-  padding: 7px 12px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  color: var(--ink);
-  background: var(--field);
-  font-size: 13px;
-}
-.study-topics button[aria-pressed="true"] {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
-}
-.study-filter-status {
-  margin-bottom: 12px;
-}
-.study-filter-status button {
-  background: transparent;
-  color: var(--accent-ink);
-  text-decoration: underline;
-  margin-left: 8px;
-}
-.review-card {
-  width: min(100%, 720px);
-  margin: 0 auto;
-  border: 1px solid var(--border);
-  border-top: 4px solid var(--accent);
-  border-radius: 18px;
-  background: var(--field);
-  box-shadow: 0 10px 35px #30251d12;
-  height: min(60dvh, 570px);
-  min-height: 280px;
-  display: flex;
-  flex-direction: column;
-  touch-action: pan-y pinch-zoom;
-}
-.review-card header,
-.review-card footer {
-  display: flex;
-  align-items: center;
-  padding: 16px 22px;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.review-card header {
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-}
-.review-card header > span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.review-card footer {
-  border-top: 1px solid var(--border);
-  padding-block: 8px;
-}
-.review-card footer > span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.review-content {
-  padding: 22px;
-  overflow: auto;
-  min-height: 0;
-  flex: 1;
-  overscroll-behavior: contain;
-}
-.review-content h2 {
-  font-size: clamp(20px, 3vw, 27px);
-  line-height: 1.5;
-  color: var(--heading);
-  margin-bottom: 18px;
-  overflow-wrap: anywhere;
-}
-.review-content p {
-  white-space: pre-wrap;
-  font-size: 17px;
-  line-height: 1.9;
-  overflow-wrap: anywhere;
-}
-.review-content img {
-  display: block;
-  max-width: 100%;
-  max-height: 240px;
-  margin: 0 auto 18px;
-  object-fit: contain;
-}
-.study-navigation {
-  justify-content: center;
-  margin: 12px 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-.study-import {
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 18px;
-}
-.study-note {
-  text-align: center;
-  margin-top: 12px;
-  line-height: 1.8;
-}
-.study-empty {
-  min-height: 260px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  text-align: center;
-  color: var(--muted);
-}
-.study-result-list {
-  display: grid;
-  gap: 10px;
-}
-.study-result-list button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--ink);
-  padding: 12px;
-  overflow-wrap: anywhere;
-}
-.study-result-list button:hover {
-  border-color: var(--accent);
-}
-.study-result-list span {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-}
-.study-result-list strong {
-  display: block;
-  margin: 4px 0;
-}
-.study-result-list p {
-  font-size: 13px;
-}
-.study-form {
-  display: grid;
-  gap: 18px;
-}
-.study-form label {
-  display: grid;
-  gap: 6px;
-  font-size: 14px;
-}
-.study-form label > span {
-  font-size: 12px;
-  color: var(--muted);
-}
-.study-form input,
-.study-form textarea {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  background: var(--field);
-  color: var(--ink);
-  font: inherit;
-  font-size: 16px;
-}
-.study-form [role="alert"] {
-  color: var(--danger);
-}
-@media (max-width: 540px) {
-  .study-page {
-    padding: 18px 16px;
-  }
-  .study-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .study-controls {
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .study-search {
-    flex-basis: 100%;
-  }
-  .study-actions {
-    gap: 5px;
-  }
-  .review-card {
-    height: min(58dvh, 500px);
-  }
-  .review-content {
-    padding: 18px;
-  }
-  .review-content p {
-    font-size: 16px;
-  }
-}
-
-.study-page {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding-block: 16px;
-  margin-block: 0;
-}
-.study-heading,
-.study-controls,
-.study-topics,
-.study-filter-status,
-.study-navigation,
-.study-import,
-.study-note {
-  flex-shrink: 0;
-}
-.review-card {
-  flex: 1;
-  min-height: 0;
-  height: auto;
-  max-height: 620px;
-}
-.study-topics {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  min-height: 44px;
-  max-height: 44px;
-  margin-block: 10px;
-}
-.study-topics button {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.study-search input:focus-visible {
-  outline: none;
-}
-@media (max-width: 540px) {
-  .study-page {
-    padding: 10px 16px;
-  }
-  .study-heading {
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: 12px;
-    gap: 8px;
-  }
-  .study-heading h1 {
-    font-size: 23px;
-  }
-  .study-heading p,
-  .study-action-label,
-  .study-result-label,
-  .study-note {
-    display: none;
-  }
-  .study-actions .toolbar-button {
-    min-width: 42px;
-    min-height: 40px;
-    padding: 9px;
-    justify-content: center;
-  }
-  .study-controls {
-    flex-wrap: nowrap;
-  }
-  .study-controls .study-search {
-    flex-basis: auto;
-  }
-  .study-controls > .toolbar-button {
-    padding: 9px;
-    min-height: 44px;
-    flex-shrink: 0;
-    gap: 5px;
-  }
-  .review-card {
-    height: auto;
-    max-height: none;
-  }
-  .review-card header {
-    padding: 10px 16px;
-  }
-  .review-card footer {
-    padding: 4px 12px;
-  }
-  .review-content {
-    padding: 14px 16px;
-  }
-  .review-content h2 {
-    margin-bottom: 12px;
-  }
-  .study-navigation {
-    margin: 5px 0 0;
-    gap: 16px;
-  }
-  .study-filter-status {
-    font-size: 11px;
-    margin-bottom: 8px;
-  }
-}
-</style>
+<style scoped src="../study.css"></style>

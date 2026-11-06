@@ -2807,7 +2807,7 @@ body:has(.study-mode) {
   overflow: hidden;
 }
 .study-mode {
-  height: 100dvh;
+  height: min(100dvh, var(--visual-height, 100dvh));
   min-height: 0;
   overflow: hidden;
   display: flex;
@@ -2819,6 +2819,45 @@ body:has(.study-mode) {
 }
 .study-mode .site-footer {
   display: none;
+}
+.study-mode .site-header {
+  height: 68px;
+}
+.study-mode .library-nav {
+  padding-block: 8px 4px;
+}
+.study-mode .library-nav button {
+  min-height: 36px;
+  padding-block: 7px;
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .study-mode {
+    --workspace-gutter: 16px;
+  }
+  .study-mode .site-header {
+    height: 58px;
+    min-height: 58px;
+    flex-wrap: nowrap;
+  }
+  .study-mode .brand-subtitle,
+  .study-mode .header-actions .help-button {
+    display: none;
+  }
+  .study-mode .brand-name {
+    font-size: 23px;
+  }
+  .study-mode .brand-mark {
+    width: 33px;
+    height: 33px;
+  }
+  .study-mode .library-nav {
+    padding-block: 4px;
+  }
+  .study-mode .library-nav button {
+    min-height: 32px;
+    padding: 5px 12px;
+  }
 }
 
 .reader-recovery {

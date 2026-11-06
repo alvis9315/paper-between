@@ -8,6 +8,7 @@ tests/*
 !tests/controls.spec.ts
 !tests/study.spec.ts
 !tests/word.spec.ts
+!tests/study-layout.spec.ts
 *.log
 .env
 .env.*

@@ -59,9 +59,8 @@ test("study cards use headings, filter a related deck, edit, persist, and restor
   );
   await page.getByRole("button", { name: "下一張小卡", exact: true }).click();
   await expect(page.locator(".review-card h2")).toHaveText("Wi-Fi");
-  await page.getByRole("button", { name: "相關小卡 2", exact: true }).click();
   await page
-    .getByRole("dialog", { name: "小卡搜尋結果" })
+    .getByRole("complementary", { name: "小卡搜尋結果" })
     .getByRole("button")
     .filter({ hasText: "藍牙" })
     .click();
@@ -126,6 +125,7 @@ test("study cards use headings, filter a related deck, edit, persist, and restor
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("textbox", { name: "搜尋小卡" }).fill("無線");
+  await page.locator(".study-result-list > button").first().click();
   await expect(page.locator(".review-card")).toHaveCount(1);
   const before = await page
     .locator(".review-card")
@@ -350,6 +350,7 @@ test("PDF can be imported directly into study cards and malformed card backups l
   await page.goto("/");
   await expect(page.locator("main.bookshelf-page")).toBeVisible();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await page.getByRole("button", { name: "從筆記建立", exact: true }).click();
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "匯入 PDF", exact: true }).click();
   await (
@@ -416,8 +417,7 @@ test("large related card sets can reveal more results and jump directly to the l
   await page.reload();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
   await page.getByRole("textbox", { name: "搜尋小卡" }).fill("共同主題");
-  await page.getByRole("button", { name: "相關小卡 73", exact: true }).click();
-  const results = page.getByRole("dialog", { name: "小卡搜尋結果" });
+  const results = page.getByRole("complementary", { name: "小卡搜尋結果" });
   await expect(results.locator("strong")).toHaveCount(60);
   await results
     .getByRole("button", { name: "顯示更多小卡（還有 13 張）", exact: true })

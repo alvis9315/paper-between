@@ -5,7 +5,7 @@ status: active
 stage: implementation
 owner: alvis9315
 source_of_truth: true
-updated: 2026-11-06
+updated: 2026-11-07
 tags:
   - notebook
   - reading
@@ -14,10 +14,13 @@ tags:
 
 # 頁白｜目前進度
 
-目前原始碼版本 **1.7.1**。進度正本是本檔；詳盡接續資訊見 [docs/HANDOFF.md](docs/HANDOFF.md)，完成項目的版本歷史見 [CHANGELOG.md](CHANGELOG.md)。
+目前原始碼版本 **1.8.0**。進度正本是本檔；詳盡接續資訊見 [docs/HANDOFF.md](docs/HANDOFF.md)，完成項目的版本歷史見 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 最後完成
 
+- 依指定 AppsScript HTML 重做小卡：桌機左清單右閱讀、手機清單／單卡分流，移除第二層側邊留白、重複標題與常駐說明。
+- 小卡增加來源／收藏、章節與標籤面板、別名／全半形搜尋、三種字級、速答／完整答案／表格／題圖與原文；HTML／JSON 只讀資料匯入、舊卡／ZIP 相容。
+- 以指定實際 HTML 在 Chrome／WebKit 匯入 184 張、兩來源、五張含題圖，確認收藏、答案格式、原文及 ZIP 還原；資料未預載或提交。
 - 修正固定座標 Word 被當成段落拆散：支援原頁圖文、字型、分頁與文字層；一般 Word 仍可編輯，不支援的浮動版面明確引導 PDF。
 - 已取得實際兩組 PDF／DOCX，Chrome／WebKit 對照匯入均維持考題 22 頁、總複習 14 頁，檢視第一頁原貌；私人教材未提交。
 - 保存定位、官方競品、黏著度與驗證建議到 [docs/PRODUCT-STRATEGY.md](docs/PRODUCT-STRATEGY.md)；Word 修正／限制見 [docs/WORD-IMPORT.md](docs/WORD-IMPORT.md)。
@@ -28,15 +31,15 @@ tags:
 
 ## 正在進行
 
-1.7.1 修正、build、46 個跨引擎執行個案與 diff 檢查已完成，已同步 GitHub，Sites 版本 14 部署成功。沒有未完成的本輪程式工作。
+1.8.0 功能、build、完整 52 個跨引擎回歸個案與 diff 檢查通過。正在同步 GitHub、部署既有 Site 並回填紀錄。
 
 ## 下一個明確動作
 
-重新匯入兩份 Word 驗證新原頁閱讀（舊碎段落筆記沒有原 Word，無法自動還原，不自行覆蓋）。由使用者確認 Safari 26.0.1 實機匯入；後續再按實際回饋決定重排／小卡擴充，產品策略文件不是已實作清單。
+使用者可在小卡選「匯入小卡」直接選指定資料夾的 index.html。後續依桌機／手機實際操作回饋調整，實體 Safari 26.0.1 仍待確認。舊碎段落 Word 筆記仍須重新匯入原檔，產品策略文件不是已實作清單。
 
 ## 最新驗證
 
-2026-11-06：1.7.1 `npm run build`、完整 `npm test` 23 情境 × Chrome／WebKit 共 46 個執行個案及 `git diff --check` 通過。新增合成 Word 原頁／同列文字座標／搜尋／手機／重新整理／ZIP、不支援版面不加入書架、一般 Word 可編輯；既有閱讀、書架、小卡及重排一併回歸。兩組實際 PDF／Word 的 Chrome／WebKit 匯入及第一頁人工對照已完成。
+2026-11-07：1.8.0 `npm run build`、完整 26 情境 × Chrome／WebKit 共 52 個執行個案及 `git diff --check` 通過。新增來源／主題／搜尋／收藏、答案格式、字級與位置、原文、圖片、手機選單／清單、320–2560px、鍵盤可見高度、表格滑動、匯入不執行程式與 ZIP；原閱讀／Word／書架／重排一併回歸。指定實際 HTML 也已完成 Chrome／WebKit 匯入與 ZIP 對照，已檢視桌機／手機、日夜畫面。
 
 ## 已知限制
 
@@ -46,6 +49,7 @@ tags:
 - [中] 筆記只保存在瀏覽器；GitHub 不含個人 PDF／筆記。不同網址、瀏覽器或裝置要用書架 ZIP 搬移。
 - [低] PDF 掃描頁尚無 OCR，PDF 原文不可直接改寫；其餘匯入與備份限制見 README。
 - [中] 固定座標 Word 只支援經驗證的原頁結構，不是完整 Word 排版引擎；不支援時引導 PDF，不再直接攤平。原頁閱讀不直接修改原 Word。
+- [低] 小卡 HTML 匯入限指定資料結構，不是任意網頁擷取；HTML 原文對照是抽取文字，不含原 PDF。PDF／Word 自動拆卡仍是原文分段，沒有 AI 自動出題／間隔複習。
 
 ## Site 部署紀錄
 

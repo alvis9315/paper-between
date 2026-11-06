@@ -1,4 +1,5 @@
 import type { BookRecord, ReviewCard } from "./model";
+import { cardDetails } from "./cardContent";
 export const MAX_REVIEW_CARDS = 2000;
 export function splitReviewText(text: string, limit = 600): string[] {
   const units = [
@@ -39,6 +40,7 @@ export function cardsFromBook(
     title: string,
     tags: string[],
     image?: ReviewCard["image"],
+    sourcePages?: ReviewCard["sourcePages"],
   ) {
     const chunks = splitReviewText(body || (image ? "圖解複習" : ""));
     chunks.forEach((part, n) =>
@@ -57,6 +59,7 @@ export function cardsFromBook(
           ...new Set(tags.map((t) => t.trim().slice(0, 60)).filter(Boolean)),
         ].slice(0, 8),
         image: n === 0 ? image : undefined,
+        sourcePages,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }),
@@ -95,6 +98,17 @@ export function cardsFromBook(
           block.text,
           `${book.document.title} · 原檔第 ${block.pdf?.page || 1} 頁`,
           [book.document.title],
+          undefined,
+          [
+            {
+              page: block.pdf?.page || 1,
+              text:
+                block.text.length > 29000
+                  ? block.text.slice(0, 29000) +
+                    "\n（原文較長，其餘內容請回到來源筆記。）"
+                  : block.text,
+            },
+          ],
         );
       } else {
         text += `${text ? "\n\n" : ""}${block.text}`;
@@ -115,6 +129,7 @@ export function restoreReviewCards(
     throw new Error("備份小卡數量或格式不正確。");
   return value.map((card: any) => {
     if (
+      !card ||
       typeof card.title !== "string" ||
       !card.title.trim() ||
       card.title.length > 160 ||
@@ -152,6 +167,7 @@ export function restoreReviewCards(
       };
     }
     return {
+      ...cardDetails(card),
       id: crypto.randomUUID(),
       title: card.title,
       body: card.body,
@@ -166,7 +182,10 @@ export function restoreReviewCards(
           ? sourceBookId +
             ":" +
             card.sourceKey.split(":").slice(1).join(":").slice(0, 160)
-          : undefined,
+          : typeof card.sourceKey === "string" &&
+              /^html:[a-f0-9]{64}:\d{1,4}$/.test(card.sourceKey)
+            ? card.sourceKey
+            : undefined,
       image,
       createdAt:
         Number.isFinite(card.createdAt) && card.createdAt > 0

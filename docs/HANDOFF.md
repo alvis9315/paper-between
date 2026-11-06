@@ -1,10 +1,16 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.7.1**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-07（Asia/Taipei）。原始碼版本：**1.8.0**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-本輪先保存產品策略到 [PRODUCT-STRATEGY.md](PRODUCT-STRATEGY.md)，再修正實際 PDF 還原 Word 的版面崩壞。1.7.1 build、23 情境 × Chrome／WebKit 共 46 個執行個案與 diff 檢查通過，GitHub 同步及 Sites 版本 14 部署成功。
+本輪依使用者指定 AppsScript HTML 重做小卡，先前 Word 與策略工作保留。1.8.0 build、完整 26 情境 × Chrome／WebKit 共 52 個執行個案與 diff 檢查通過；正在 push／部署並回填。
+
+- 小卡桌機／手機：`StudyCards.vue` + `src/study.css`；>900px 常駐左結果右卡片，≤900px 搜尋後先清單再單卡，其他操作進選單；主畫面沒有重複大標、宣傳／保存說明，側邊與頂部共用 gutter。
+- 內容：`cardContent.ts` 清理 HTML／高亮／欄位驗證，`cardImport.ts` 只讀資料匯入。ReviewCard 新可選欄位保留速答、題幹、表格答案、收藏、章節／別名及原文頁，舊版相容。原有 saveLibrary／ZIP 路徑沿用，新欄位還原與圖片參照已驗證。
+- 參考 HTML 共 184 張、兩來源、五張含題圖，已在 Chrome／WebKit 匯入及 ZIP 還原。實際資料只用本機隔離瀏覽器驗證，不放 repo／部署；線上用「匯入小卡」選使用者自己的 index.html，不預載。
+- `tests/study-layout.spec.ts` 用合成三張卡、原文與 canvas 圖驗證兩套版面、收藏／來源／搜尋交集、字級、來源／題圖／標籤視窗、手機鍵盤可見高度與 320–2560px、表格不換卡、HTML 不執行程式及備份；既有 `study.spec.ts` 配合常駐清單更新選題路徑。
+- 使用規則與格式見 [STUDY-CARDS.md](STUDY-CARDS.md)。新功能沒有 AI 自動出題、間隔複習或同步；HTML 原文對照是抽取文字，不是原 PDF。
 
 - Word：`core/docx.worker.ts` 分流一般段落／定位圖文；`core/fixedWord.ts` 用文件自己的座標、圖片及嵌入字型建立本機原頁 PDF，`importer.ts` 接回原頁閱讀。考題維持 22 頁、總複習 14 頁，可搜尋、選字、註記、放大及 ZIP。
 - 支援範圍見 [WORD-IMPORT.md](WORD-IMPORT.md)，不是通用 Word 排版引擎。遇到混合流式／不支援圖形不回退到攤平；保留舊書架並引導 PDF。舊版碎筆記沒有原 Word，須重新匯入，不自行刪除舊本。
@@ -153,7 +159,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-1.7.1 Word 修正、策略文件、build／46 個跨引擎執行個案／diff 檢查、GitHub 同步及部署已完成。沒有未完成的本輪程式工作。原 PDF／Word 已取得並跨引擎對照；實體 Safari 26.0.1 仍待確認。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
+1.8.0 小卡重做、build、完整 52 個回歸個案與 diff 檢查完成，正在 push／部署回填。原參考 HTML 已跨引擎匯入、日夜／桌機／手機檢視、ZIP 驗證；實體 Safari 26.0.1 仍待確認。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei

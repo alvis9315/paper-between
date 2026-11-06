@@ -66,6 +66,14 @@ export interface ReviewCard {
   image?: ImageReference;
   createdAt: number;
   updatedAt: number;
+  favorite?: boolean;
+  summary?: string;
+  context?: string;
+  answerHtml?: string;
+  section?: string;
+  kind?: "review" | "past" | "practice" | "glossary";
+  keywords?: string[];
+  sourcePages?: { page: number; text: string }[];
 }
 export interface LibraryState {
   books: BookRecord[];
