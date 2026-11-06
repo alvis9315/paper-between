@@ -23,7 +23,6 @@ import {
   selectionTargets,
   reanchorAnnotations,
 } from "./core/annotations";
-import { createDemo } from "./data/demo";
 import { paginate } from "./core/pagination";
 import { importDocx } from "./core/importer";
 import { anchorForPage, pageForAnchor, spreadForPage } from "./core/navigation";
@@ -602,15 +601,6 @@ function dropFile(e: DragEvent) {
   if (editorOpen.value || textOpen.value) return;
   if (e.dataTransfer?.files.length) void loadFile(e.dataTransfer.files[0]);
 }
-async function demo() {
-  if (busy.value || turning.value) return;
-  importOpen.value = false;
-  captureCurrent();
-  shelfOpen.value = false;
-  await nextTick();
-  await layout(createDemo());
-  notify("已載入示範筆記。");
-}
 async function createTextNotebook(
   candidate: Notebook,
   mode: "new" | "append" = "new",
@@ -728,6 +718,7 @@ onMounted(async () => {
   if (workspace.value) resizeObserver.observe(workspace.value);
   try {
     const library = await loadLibrary();
+    if (library.storageWarning) notify(library.storageWarning, true);
     books.value = library.books;
     activeId.value = library.activeId;
     library.books.forEach((b) => dirtyIds.add(b.document.id));
@@ -740,15 +731,22 @@ onMounted(async () => {
       restoredAnchor = saved.anchor;
       currentAnchor = saved.anchor;
     }
-    if (library.books.length && !saved) {
+    if (!saved) {
       layingOut.value = false;
       shelfOpen.value = true;
       return;
     }
   } catch {
-    notify("無法讀取本機筆記，已為你打開示範。這次內容可能無法保存。", true);
+    notify(
+      "無法讀取本機書架，仍可匯入文件或備份；這次內容可能無法保存。",
+      true,
+    );
   }
-  await layout(doc.value || createDemo(), restoredAnchor);
+  if (doc.value) await layout(doc.value, restoredAnchor);
+  else {
+    layingOut.value = false;
+    shelfOpen.value = true;
+  }
 });
 onBeforeUnmount(() => {
   controller?.abort();
@@ -843,14 +841,7 @@ onBeforeUnmount(() => {
             :class="{ selected: searchOpen }"
             @click="toggleSearch"
           >
-            <AppIcon name="search" /><span>搜尋筆記</span><kbd>/</kbd></button
-          ><span class="toolbar-divider"></span
-          ><button
-            class="toolbar-button"
-            :disabled="busy || turning"
-            @click="demo"
-          >
-            <AppIcon name="book" /><span>載入示範筆記</span>
+            <AppIcon name="search" /><span>搜尋筆記</span><kbd>/</kbd>
           </button>
         </div>
         <div class="toolbar-right">

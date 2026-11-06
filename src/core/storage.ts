@@ -2,6 +2,22 @@
 import { createRecord } from "./library";
 import { database } from "./database";
 import { mediaIds, pendingMedia } from "./media";
+import { withoutBundledDemo } from "./startup";
+
+async function retireDemo(state: LibraryState): Promise<LibraryState> {
+  const cleaned = await withoutBundledDemo(state);
+  if (!cleaned.removedIds.length) return state;
+  try {
+    await saveLibrary(cleaned.state, undefined, cleaned.removedIds);
+  } catch {
+    return {
+      ...cleaned.state,
+      storageWarning:
+        "示範已從畫面移除，但瀏覽器無法保存這次清理；重新整理時會再嘗試。",
+    };
+  }
+  return cleaned.state;
+}
 export async function loadLibrary(): Promise<LibraryState> {
   const db = await database();
   try {
@@ -36,7 +52,7 @@ export async function loadLibrary(): Promise<LibraryState> {
         };
       },
     );
-    if (state) return state;
+    if (state) return await retireDemo(state);
     const legacy = await new Promise<SavedState | undefined>(
       (resolve, reject) => {
         const req = db
@@ -50,12 +66,19 @@ export async function loadLibrary(): Promise<LibraryState> {
     if (!legacy?.document?.blocks?.length) return { books: [] };
     const book = createRecord(legacy.document, legacy.anchor);
     const migrated = { books: [book], activeId: book.document.id };
+    const cleaned = await withoutBundledDemo(migrated);
     try {
-      await saveLibrary(migrated);
+      await saveLibrary(cleaned.state, undefined, cleaned.removedIds);
     } catch {
+      if (cleaned.removedIds.length)
+        return {
+          ...cleaned.state,
+          storageWarning:
+            "示範已從畫面移除，但瀏覽器無法保存這次清理；重新整理時會再嘗試。",
+        };
       /* 仍先提供舊筆記；閱讀端會顯示儲存失敗。 */
     }
-    return migrated;
+    return cleaned.state;
   } finally {
     db.close();
   }
@@ -63,6 +86,7 @@ export async function loadLibrary(): Promise<LibraryState> {
 export async function saveLibrary(
   state: LibraryState,
   changedIds?: string[],
+  removedIds: string[] = [],
 ): Promise<void> {
   const db = await database();
   try {
@@ -71,6 +95,7 @@ export async function saveLibrary(
       const store = tx.objectStore("notebook");
       const writtenMedia: string[] = [];
       try {
+        removedIds.forEach((id) => store.delete(`book:${id}`));
         const ids = new Set(state.books.flatMap((b) => mediaIds(b.document)));
         // Atomic with the snapshot; copies and trash retain their shared assets.
         const cursor = store.openCursor(

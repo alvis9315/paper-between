@@ -57,6 +57,7 @@ export interface BookRecord extends SavedState {
 export interface LibraryState {
   books: BookRecord[];
   activeId?: string;
+  storageWarning?: string;
 }
 export interface ImageReference {
   mediaId: string;
