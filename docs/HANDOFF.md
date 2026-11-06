@@ -1,11 +1,17 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-07（Asia/Taipei）。原始碼版本：**1.8.0**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-07（Asia/Taipei）。原始碼版本：**1.8.1**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-本輪依使用者指定 AppsScript HTML 重做小卡，先前 Word 與策略工作保留。1.8.0 build、完整 26 情境 × Chrome／WebKit 共 52 個執行個案與 diff 檢查通過，GitHub 同步及 Sites 版本 15 部署成功。
+本輪修正從筆記建立小卡只用「考題」檔名當標籤。1.8.1 build、完整 29 情境 × Chrome／WebKit 共 58 個執行個案與 diff 檢查通過，正在同步 GitHub／Sites；先前成功部署為 1.8.0，下方保留歷史證據。
 
+- `core/cardTopics.ts` 讀 PDF 字級／座標合併標題，跨頁樣式過濾圖表標籤；依內容／原頁位置分類，無線索用重複縮寫或留空，不使用私人題庫／固定科目詞庫。固定 Word 共用 PDF 路徑；一般 Word 仍依 heading。
+- `StudyCards.vue` 生成／舊卡修復接到分類；初次掛載修復只有檔名／空標籤的舊自動卡，生成面板可手動更新自動分類。App 僅批次寫 tags／topicOrigin，不替換卡片正文／ID／sourceKey／收藏；手動標籤與 HTML 原分類排除。解析原檔失敗不部分加入／更新。
+- `ReviewCard.topicOrigin` 為可選 auto／manual，編輯標籤才設 manual，ZIP 保留；舊欄位相容。來源檔名不當內容主題，空標籤有未分類入口。
+- 指定 HTML 的 184 為卡片數；主題實際 18 個、章節 37 個。HTML 原有分類並未丟失，使用者確認走 PDF／Word 建卡，缺漏在該流程。自動規則不等同這份手工整理的語意分類或分題品質。
+- 實際 PDF／固定 Word 在 Chrome／WebKit 分類結果一致：考題 32 個候選主題，9 張未分類；總複習 PDF 16／Word 15 個，Word 2 張未分類。規則式分類仍需校正，不宣稱等同人工整理。
+- 新增合成 PDF 直接建卡、舊檔名卡自動修復、手改答案／收藏／標籤保護、ZIP 與 120 個不同標籤匯入測試。私人 PDF／Word 僅本機 QA，不提交。
 - 小卡桌機／手機：`StudyCards.vue` + `src/study.css`；>900px 常駐左結果右卡片，≤900px 搜尋後先清單再單卡，其他操作進選單；主畫面沒有重複大標、宣傳／保存說明，側邊與頂部共用 gutter。
 - 內容：`cardContent.ts` 清理 HTML／高亮／欄位驗證，`cardImport.ts` 只讀資料匯入。ReviewCard 新可選欄位保留速答、題幹、表格答案、收藏、章節／別名及原文頁，舊版相容。原有 saveLibrary／ZIP 路徑沿用，新欄位還原與圖片參照已驗證。
 - 參考 HTML 共 184 張、兩來源、五張含題圖，已在 Chrome／WebKit 匯入及 ZIP 還原。實際資料只用本機隔離瀏覽器驗證，不放 repo／部署；線上用「匯入小卡」選使用者自己的 index.html，不預載。

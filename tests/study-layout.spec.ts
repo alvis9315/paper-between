@@ -310,3 +310,205 @@ test("invalid decks preserve existing cards and imported answer markup cannot ex
   ).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).cardRan)).toBeUndefined();
 });
+
+async function topicPdf() {
+  const { PDFDocument, StandardFonts } = await import("pdf-lib");
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  for (const title of ["Routing", "Wireless", "Storage"]) {
+    const page = pdf.addPage([600, 800]);
+    page.drawText(title, { x: 40, y: 750, size: 18, font });
+    for (let n = 0; n < 4; n++)
+      page.drawText(
+        `${title} has its own material, with a separate explanation for study.`,
+        { x: 40, y: 710 - n * 20, size: 12, font },
+      );
+  }
+  return Buffer.from(await pdf.save());
+}
+
+test("PDF card creation classifies content topics instead of the filename", async ({
+  page,
+}) => {
+  await openCards(page);
+  await page.getByRole("button", { name: "從筆記建立", exact: true }).click();
+  const chooser = page.waitForEvent("filechooser");
+  await page
+    .getByRole("dialog", { name: "從筆記建立小卡", exact: true })
+    .getByRole("button", { name: "匯入 PDF", exact: true })
+    .click();
+  await (
+    await chooser
+  ).setFiles({
+    name: "Exam.pdf",
+    mimeType: "application/pdf",
+    buffer: await topicPdf(),
+  });
+  await expect
+    .poll(async () => (await stored(page)).reviewCards?.length)
+    .toBe(3);
+  const data = await stored(page);
+  expect(data.reviewCards.map((c: any) => c.tags)).toEqual([
+    ["Routing"],
+    ["Wireless"],
+    ["Storage"],
+  ]);
+  expect(
+    data.reviewCards.every(
+      (c: any) => c.sourceTitle === "Exam" && c.topicOrigin === "auto",
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "# Wireless", exact: true }).click();
+  await expect(page.locator(".study-result-list strong")).toHaveCount(1);
+  await expect(page.locator(".review-card")).toContainText(
+    "Wireless has its own material",
+  );
+});
+
+test("legacy filename tags are repaired without changing cards or curated tags, and survive ZIP", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("main.bookshelf-page")).toBeVisible();
+  await page.evaluate(
+    async (bytes) => {
+      const a = "/src/core/pdf.ts",
+        b = "/src/core/reviewCards.ts",
+        c = "/src/core/storage.ts";
+      const { importPdf } = await import(a),
+        { cardsFromBook } = await import(b),
+        { saveLibrary } = await import(c);
+      const document = await importPdf(
+        new File([new Uint8Array(bytes)], "Exam.pdf"),
+      );
+      const book = {
+        document,
+        anchor: { blockId: document.blocks[0].id, offset: 0 },
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        progress: 0,
+      };
+      const cards = cardsFromBook(book);
+      cards.forEach((card: any, n: number) => {
+        card.id = "legacy-" + n;
+        card.tags = ["Exam"];
+        delete card.topicOrigin;
+      });
+      cards[0].body = "Routing answer manually corrected.";
+      cards[0].favorite = true;
+      cards[1].tags = ["My own topic"];
+      cards[1].topicOrigin = "manual";
+      cards.push({
+        ...cards[2],
+        id: "curated",
+        sourceBookId: undefined,
+        sourceKey: undefined,
+        sourceTitle: "Imported deck",
+        tags: ["Curated"],
+        section: "Original section",
+      });
+      await saveLibrary({ books: [book], reviewCards: cards });
+    },
+    [...(await topicPdf())],
+  );
+  await page.reload();
+  await expect(page.locator(".book-workspace")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
+  await page.getByRole("link", { name: "頁白首頁" }).click();
+  await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await expect
+    .poll(
+      async () =>
+        (await stored(page)).reviewCards?.find((c: any) => c.id === "legacy-0")
+          .tags,
+    )
+    .toEqual(["Routing"]);
+  let data = await stored(page);
+  expect(data.reviewCards).toHaveLength(4);
+  expect(data.reviewCards[0]).toMatchObject({
+    id: "legacy-0",
+    body: "Routing answer manually corrected.",
+    favorite: true,
+    topicOrigin: "auto",
+  });
+  expect(data.reviewCards[1].tags).toEqual(["My own topic"]);
+  expect(data.reviewCards[2].tags).toEqual(["Storage"]);
+  expect(data.reviewCards[3]).toMatchObject({
+    tags: ["Curated"],
+    section: "Original section",
+  });
+  await page.getByRole("button", { name: "從筆記建立", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "從筆記建立小卡",
+    exact: true,
+  });
+  await dialog
+    .getByRole("button", { name: "更新既有小卡主題（2 張）", exact: true })
+    .click();
+  await expect(dialog.getByRole("status")).toContainText("已更新 2 張小卡");
+  const restored = await page.evaluate(async () => {
+    const s = "/src/core/storage.ts",
+      b = "/src/core/backupBundle.ts";
+    const state = await (await import(s)).loadLibrary();
+    const { createBundle, readBundle } = await import(b);
+    return (
+      await readBundle(
+        new File(
+          [await createBundle(state.books, state.reviewCards)],
+          "topics.zip",
+        ),
+      )
+    ).reviewCards;
+  });
+  expect(restored.map((c: any) => c.topicOrigin)).toEqual([
+    "auto",
+    "manual",
+    "auto",
+    undefined,
+  ]);
+  expect(restored.map((c: any) => c.tags)).toEqual([
+    ["Routing"],
+    ["My own topic"],
+    ["Storage"],
+    ["Curated"],
+  ]);
+});
+
+test("structured imports keep many distinct topics, and unclassified text never becomes a filename tag", async ({
+  page,
+}) => {
+  await openCards(page);
+  const data = Array.from({ length: 120 }, (_, n) => ({
+    id: "q" + n,
+    title: "Question " + n,
+    source: "exam",
+    tags: ["Topic " + n],
+    answerHtml: "<p>Answer " + n + "</p>",
+  }));
+  await page
+    .locator("#card-deck-file")
+    .setInputFiles({
+      name: "many.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({ cards: data })),
+    });
+  await expect
+    .poll(async () => (await stored(page)).reviewCards?.length)
+    .toBe(120);
+  const cards = (await stored(page)).reviewCards;
+  expect(new Set(cards.flatMap((c: any) => c.tags)).size).toBe(120);
+  const unknown = await page.evaluate(async () => {
+    const a = "/src/core/fromText.ts",
+      b = "/src/core/reviewCards.ts";
+    const { notebookFromText } = await import(a),
+      { cardsFromBook } = await import(b);
+    const document = notebookFromText(
+      "A plain passage without a heading.",
+      "Some filename",
+    );
+    return cardsFromBook({ document })[0].tags;
+  });
+  expect(unknown).toEqual([]);
+});

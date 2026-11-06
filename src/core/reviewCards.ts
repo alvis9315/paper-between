@@ -33,8 +33,9 @@ export function cardsFromBook(
   mode: "content" | "highlights" = "content",
 ): ReviewCard[] {
   const result: ReviewCard[] = [];
-  let topic = book.document.title,
-    heading = book.document.title;
+  let topic = "",
+    heading = book.document.title,
+    topicLevel = Infinity;
   function add(
     body: string,
     title: string,
@@ -60,6 +61,7 @@ export function cardsFromBook(
         ].slice(0, 8),
         image: n === 0 ? image : undefined,
         sourcePages,
+        topicOrigin: mode === "highlights" ? "manual" : "auto",
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }),
@@ -72,7 +74,7 @@ export function cardsFromBook(
           .filter(Boolean)
           .join("\n\n"),
         note.targets[0]?.exact.slice(0, 40) || "重點摘錄",
-        [book.document.title, ...note.tags],
+        note.tags,
       );
     }
   } else {
@@ -87,7 +89,11 @@ export function cardsFromBook(
       if (block.kind === "heading") {
         flush();
         heading = block.text;
-        if ((block.level || 2) <= 2) topic = block.text;
+        const level = block.level || 2;
+        if (level <= 2 || topicLevel > 2) {
+          topic = block.text;
+          topicLevel = level;
+        }
       } else if (block.image) {
         flush();
         image = block.image;
@@ -97,7 +103,7 @@ export function cardsFromBook(
         add(
           block.text,
           `${book.document.title} · 原檔第 ${block.pdf?.page || 1} 頁`,
-          [book.document.title],
+          [],
           undefined,
           [
             {

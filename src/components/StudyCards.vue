@@ -32,6 +32,7 @@ import {
 import IconAction from "./IconAction.vue";
 import ChoiceSelect from "./ChoiceSelect.vue";
 import ModalShell from "./ModalShell.vue";
+import { canRetag, classifyBookCards } from "../core/cardTopics";
 import { cardsFromBook, MAX_REVIEW_CARDS } from "../core/reviewCards";
 import { mediaUrl, cleanupPending } from "../core/media";
 import {
@@ -48,6 +49,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   add: [cards: ReviewCard[]];
   save: [card: ReviewCard];
+  retag: [cards: ReviewCard[]];
   remove: [id: string];
   source: [id: string];
   import: [kind: "pdf" | "word"];
@@ -83,6 +85,8 @@ const showGenerate = ref(false),
   showEdit = ref(false),
   deleteOpen = ref(false),
   importing = ref(false),
+  classifying = ref(false),
+  topicStatus = ref(""),
   importError = ref("");
 const resultLimit = ref(60),
   imageZoom = ref("1");
@@ -141,7 +145,10 @@ const filtered = computed(() =>
   base.value
     .filter(
       ({ card }) =>
-        (!topic.value || card.tags.includes(topic.value)) &&
+        (!topic.value ||
+          (topic.value === "未分類"
+            ? !card.tags.length || card.tags.includes("未分類")
+            : card.tags.includes(topic.value))) &&
         (!sectionFilter.value || card.section === sectionFilter.value),
     )
     .map((item) => ({
@@ -172,15 +179,20 @@ const sourceGroups = computed(() => [
   ...new Set(props.cards.map((c) => c.sourceTitle)),
 ]);
 const topics = computed(() =>
-  [...new Set(props.cards.flatMap((c) => c.tags))].sort((a, b) =>
-    a.localeCompare(b, "zh-Hant"),
-  ),
+  [
+    ...new Set(
+      props.cards.flatMap((c) => (c.tags.length ? c.tags : ["未分類"])),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "zh-Hant")),
 );
 const visibleTopics = computed(() =>
   topics.value.filter(
     (tag) =>
-      base.value.some(({ card }) => card.tags.includes(tag)) ||
-      topic.value === tag,
+      base.value.some(({ card }) =>
+        tag === "未分類"
+          ? !card.tags.length || card.tags.includes("未分類")
+          : card.tags.includes(tag),
+      ) || topic.value === tag,
   ),
 );
 const favoriteCount = computed(
@@ -246,7 +258,11 @@ const generated = computed(() =>
     : [],
 );
 function topicCount(tag: string) {
-  return base.value.filter(({ card }) => card.tags.includes(tag)).length;
+  return base.value.filter(({ card }) =>
+    tag === "未分類"
+      ? !card.tags.length || card.tags.includes("未分類")
+      : card.tags.includes(tag),
+  ).length;
 }
 function sourceCount(name: string) {
   return props.cards.filter((c) => c.sourceTitle === name).length;
@@ -415,6 +431,10 @@ function save() {
     title: title.value.trim(),
     body: body.value.trim(),
     tags: parsedTags,
+    topicOrigin:
+      JSON.stringify(parsedTags) === JSON.stringify(editing.value?.tags)
+        ? editing.value?.topicOrigin
+        : "manual",
     summary: summary.value.trim(),
     answerHtml:
       editing.value?.body === body.value.trim()
@@ -430,21 +450,81 @@ function save() {
   showResults.value = false;
 }
 async function generate() {
+  if (!source.value || classifying.value) return;
   if (props.cards.length + generated.value.length > MAX_REVIEW_CARDS) {
     error.value = "超過 2000 張小卡，請改用重點摘錄或先整理。";
     return;
   }
-  const fresh = generated.value;
-  emit("add", fresh);
-  reset();
-  await nextTick();
-  selectedId.value = fresh[0]?.id || "";
-  showGenerate.value = false;
-  showResults.value = false;
+  classifying.value = true;
+  error.value = "";
+  try {
+    const fresh =
+      mode.value === "highlights"
+        ? generated.value
+        : await classifyBookCards(source.value, generated.value);
+    emit("add", fresh);
+    reset();
+    await nextTick();
+    selectedId.value = fresh[0]?.id || "";
+    showGenerate.value = false;
+    showResults.value = false;
+  } catch {
+    error.value =
+      "無法讀取來源文件以辨識主題，請確認原檔仍在書架，或從備份還原後重試。尚未加入小卡。";
+  } finally {
+    classifying.value = false;
+  }
 }
+const retaggable = computed(() =>
+  source.value ? props.cards.filter((c) => canRetag(c, source.value!)) : [],
+);
+async function retag(legacyOnly = false) {
+  if (classifying.value) return;
+  const books = legacyOnly ? sources.value : source.value ? [source.value] : [];
+  if (
+    !books.some((book) =>
+      props.cards.some((c) => canRetag(c, book, legacyOnly)),
+    )
+  )
+    return;
+  classifying.value = true;
+  error.value = "";
+  topicStatus.value = "";
+  try {
+    const updates: ReviewCard[] = [];
+    for (const book of books) {
+      const candidates = props.cards.filter((c) =>
+        canRetag(c, book, legacyOnly),
+      );
+      if (!candidates.length) continue;
+      const classified = await classifyBookCards(book, candidates);
+      // Re-read current props after parsing; preserve edits made while awaiting the PDF.
+      for (const card of classified) {
+        const latest = props.cards.find((c) => c.id === card.id);
+        if (latest && canRetag(latest, book, legacyOnly))
+          updates.push({ ...latest, tags: card.tags, topicOrigin: "auto" });
+      }
+    }
+    emit("retag", updates);
+    reset();
+    const count = new Set(updates.flatMap((c) => c.tags)).size;
+    topicStatus.value = `已更新 ${updates.length} 張小卡，辨識 ${count} 個主題。${updates.some((c) => !c.tags.length) ? "未能確認的內容保留為未分類，可自行補上標籤。" : ""}`;
+  } catch {
+    const message =
+      "主題辨識未完成，原有小卡已保留。請確認來源原檔仍在書架，或從備份還原後重試。";
+    if (legacyOnly) importError.value = message;
+    else error.value = message;
+  } finally {
+    classifying.value = false;
+  }
+}
+onMounted(() => {
+  void retag(true);
+});
 function generateDialog() {
   closeTools();
   error.value = "";
+  topicStatus.value = "";
   showGenerate.value = true;
 }
 function pickDeck() {
@@ -641,14 +721,14 @@ onBeforeUnmount(() => {
           :icon="Upload"
           label="匯入小卡 HTML／JSON"
           touch-label="匯入小卡"
-          :disabled="busy || importing"
+          :disabled="busy || importing || classifying"
           @click="pickDeck"
         />
         <IconAction
           :compact="!mobile"
           :icon="Plus"
           label="新增小卡"
-          :disabled="busy || importing"
+          :disabled="busy || importing || classifying"
           @click="edit()"
         />
         <IconAction
@@ -656,7 +736,7 @@ onBeforeUnmount(() => {
           :compact="!mobile"
           :icon="Layers"
           label="從筆記建立"
-          :disabled="busy || importing"
+          :disabled="busy || importing || classifying"
           @click="generateDialog"
         />
         <IconAction
@@ -736,8 +816,8 @@ onBeforeUnmount(() => {
         sectionFilter || topic ? `，${sectionFilter || topic}` : ""
       }}
     </p>
-    <div v-if="importing" class="study-loading" role="status">
-      正在匯入小卡…
+    <div v-if="importing || classifying" class="study-loading" role="status">
+      {{ classifying ? "正在辨識內容主題…" : "正在匯入小卡…" }}
     </div>
     <div v-if="!cards.length" class="study-empty">
       <Layers :size="32" />
@@ -745,13 +825,13 @@ onBeforeUnmount(() => {
       <div class="study-empty-actions">
         <button
           class="import-button"
-          :disabled="busy || importing"
+          :disabled="busy || importing || classifying"
           @click="pickDeck"
         >
           <Upload :size="17" />匯入小卡</button
         ><button
           class="toolbar-button"
-          :disabled="busy || importing"
+          :disabled="busy || importing || classifying"
           @click="generateDialog"
         >
           從筆記建立
@@ -847,20 +927,20 @@ onBeforeUnmount(() => {
                 :label="current.favorite ? '取消收藏這張小卡' : '收藏這張小卡'"
                 :aria-pressed="!!current.favorite"
                 :class="{ 'is-favorite': current.favorite }"
-                :disabled="busy || importing"
+                :disabled="busy || importing || classifying"
                 @click="toggleFavorite"
               /><IconAction
                 compact
                 :icon="SquarePen"
                 label="編輯小卡"
-                :disabled="busy || importing"
+                :disabled="busy || importing || classifying"
                 @click="edit(current)"
               /><IconAction
                 compact
                 :icon="Trash2"
                 label="刪除小卡"
                 danger
-                :disabled="busy || importing"
+                :disabled="busy || importing || classifying"
                 @click="deleteOpen = true"
               />
             </div>
@@ -1141,7 +1221,7 @@ onBeforeUnmount(() => {
         >來源筆記<ChoiceSelect
           v-model="sourceId"
           label="小卡來源筆記"
-          :disabled="!sources.length"
+          :disabled="!sources.length || classifying"
           :options="
             sources.map((b) => ({
               value: b.document.id,
@@ -1152,6 +1232,7 @@ onBeforeUnmount(() => {
         >使用內容<ChoiceSelect
           v-model="mode"
           label="小卡建立方式"
+          :disabled="classifying"
           :options="[
             { value: 'content', label: '依標題與段落' },
             { value: 'highlights', label: '只用重點摘錄' },
@@ -1159,12 +1240,12 @@ onBeforeUnmount(() => {
       /></label>
       <p>依原文標題、段落或重點建立，內容可再校正。</p>
       <p v-if="source?.document.pdfAssetId">
-        原頁文件尚未自動辨識主題；可先用圖文重排整理，再建立小卡。
+        依原頁標題、字級與內容關鍵字辨識主題；來源檔名不作標籤。無法確認的內容留為未分類。
       </p>
       <div class="study-import">
         <button
           class="toolbar-button"
-          :disabled="busy || importing"
+          :disabled="busy || importing || classifying"
           @click="
             showGenerate = false;
             emit('import', 'word');
@@ -1173,7 +1254,7 @@ onBeforeUnmount(() => {
           匯入 Word</button
         ><button
           class="toolbar-button"
-          :disabled="busy || importing"
+          :disabled="busy || importing || classifying"
           @click="
             showGenerate = false;
             emit('import', 'pdf');
@@ -1182,11 +1263,20 @@ onBeforeUnmount(() => {
           匯入 PDF
         </button>
       </div>
+      <button
+        v-if="retaggable.length"
+        class="toolbar-button"
+        :disabled="classifying"
+        @click="retag()"
+      >
+        更新既有小卡主題（{{ retaggable.length }} 張）
+      </button>
+      <p v-if="topicStatus" role="status">{{ topicStatus }}</p>
       <strong>可新增 {{ generated.length }} 張（已建立過的來源會略過）</strong>
       <p v-if="error" role="alert">{{ error }}</p>
       <button
         class="import-button"
-        :disabled="!generated.length"
+        :disabled="!generated.length || classifying"
         @click="generate"
       >
         建立小卡

@@ -54,3 +54,5 @@
 - 媒體新的 IndexedDB 紀錄使用 `data: ArrayBuffer` 避開 WebKit Blob 寫入錯誤；`getMedia` 必須繼續讀舊 Blob 並對外回傳 MediaAsset，不把內部 data 欄位帶進 ZIP。
 - Word 須區分一般段落與固定座標圖文；文字方塊不能直接攤平成段落。支援的定位版面用本機原頁閱讀，不支援則明確引導 PDF，不能假成功後丟失版面；見 `docs/WORD-IMPORT.md`。私人教材／字型不納入 repo。
 - 產品定位與競品建議保存在 `docs/PRODUCT-STRATEGY.md`，均為待驗證方向，不能當作已完成或自動擴大當輪需求。
+
+- 小卡來源檔名不當內容標籤；PDF／固定 Word 以 cardTopics 規則分類，無可靠線索留未分類。topicOrigin 為 manual 的卡與 HTML 原分類不得自動覆寫；舊檔名卡修復僅更新分類，不改答案／ID／去重鍵／收藏。

@@ -74,6 +74,7 @@ export interface ReviewCard {
   kind?: "review" | "past" | "practice" | "glossary";
   keywords?: string[];
   sourcePages?: { page: number; text: string }[];
+  topicOrigin?: "auto" | "manual";
 }
 export interface LibraryState {
   books: BookRecord[];

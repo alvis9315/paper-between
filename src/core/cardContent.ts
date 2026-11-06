@@ -131,6 +131,11 @@ export function cardDetails(
       throw new Error("小卡答案格式不正確，尚未加入任何內容。");
     result.answerHtml = sanitizeCardHtml(value.answerHtml);
   }
+  if (value.topicOrigin !== undefined) {
+    if (value.topicOrigin !== "auto" && value.topicOrigin !== "manual")
+      throw new Error("小卡主題來源格式不正確。");
+    result.topicOrigin = value.topicOrigin;
+  }
   if (value.favorite !== undefined) {
     if (typeof value.favorite !== "boolean")
       throw new Error("小卡收藏格式不正確。");

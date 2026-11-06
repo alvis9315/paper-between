@@ -167,6 +167,21 @@ function saveReviewCard(card: ReviewCard) {
     queueSave();
   }
 }
+function retagReviewCards(cards: ReviewCard[]) {
+  const updates = new Map(cards.map((c) => [c.id, c]));
+  reviewCards.value = reviewCards.value.map((c) => {
+    const update = updates.get(c.id);
+    return update && c.topicOrigin !== "manual"
+      ? {
+          ...c,
+          tags: update.tags,
+          topicOrigin: update.topicOrigin,
+          updatedAt: Date.now(),
+        }
+      : c;
+  });
+  queueSave();
+}
 function removeReviewCard(id: string) {
   reviewCards.value = reviewCards.value.filter((c) => c.id !== id);
   queueSave();
@@ -740,7 +755,10 @@ async function loadFile(file?: File) {
     await layout(candidate);
     if (asCards) {
       const record = books.value.find((b) => b.document.id === candidate.id);
-      if (record) addReviewCards(cardsFromBook(record));
+      if (record) {
+        const { classifyBookCards } = await import("./core/cardTopics");
+        addReviewCards(await classifyBookCards(record, cardsFromBook(record)));
+      }
       libraryView.value = "cards";
       shelfOpen.value = true;
     }
@@ -1169,6 +1187,7 @@ onBeforeUnmount(() => {
       :busy="busy || backupWorking"
       @add="addReviewCards"
       @save="saveReviewCard"
+      @retag="retagReviewCards"
       @remove="removeReviewCard"
       @source="openBook"
       @import="importForCards"
