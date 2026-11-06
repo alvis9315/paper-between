@@ -1,0 +1,148 @@
+/* One warm palette for the desk, controls and paper. Changing paint never reflows text. */
+:root {
+  color-scheme: light;
+  --ink: #413b35;
+  --heading: #594535;
+  --field: #fffdf7;
+  --surface: #f7f1e8;
+  --surface-inset: #f2e8da;
+  --border-strong: #b9a187;
+  --focus-soft: #aa886633;
+  --danger: #a05339;
+  --on-accent: #fffaf3;
+  --desk: #ece5db;
+  --desk-glow: #f3eee7;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --desk: #211e1b;
+  --desk-glow: #2c2621;
+  --ink: #e4d9c9;
+  --heading: #efdfcb;
+  --muted: #b7a692;
+  --paper: #302b25;
+  --accent: #c4a383;
+  --accent-hover: #d7b99c;
+  --on-accent: #261e17;
+  --border: #584c40;
+  --border-strong: #8b735e;
+  --field: #28231e;
+  --surface: #332c26;
+  --surface-raised: #39312a;
+  --surface-panel: #302a24;
+  --surface-inset: #42372d;
+  --text-primary: #e4d9c9;
+  --text-secondary: #c4b39e;
+  --text-muted: #b1a18e;
+  --line: #574b40;
+  --line-strong: #89715b;
+  --focus-soft: #c4a38344;
+  --danger: #e8a58d;
+  --shadow-soft: #00000022;
+  --shadow-deep: #00000066;
+  --scrim: #100d0bc4;
+  --overlay: #28231ef2;
+  --hover-wash: #d5b79712;
+  --book-cover: #79604b;
+  --search-mark: #61503b;
+  --search-active: #cba85d;
+}
+html {
+  background: var(--desk);
+  color: var(--ink);
+}
+.app {
+  background: radial-gradient(
+    ellipse at 50% 30%,
+    var(--desk-glow),
+    var(--desk) 70%
+  );
+}
+input,
+textarea,
+select {
+  accent-color: var(--accent);
+}
+:is(button, a, input, textarea, select, summary):focus-visible {
+  outline-color: var(--accent);
+}
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.theme-toggle > span {
+  width: 29px;
+  height: 27px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.theme-toggle > span.active {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+}
+[data-theme="dark"] .mini-book {
+  background: #66513f;
+  border-color: #8a6e55;
+  color: #f1dfc7;
+}
+[data-theme="dark"] .mini-book.cover-1 {
+  background: #68524a;
+  border-color: #896a60;
+}
+[data-theme="dark"] .mini-book.cover-2 {
+  background: #5c594b;
+  border-color: #7e7b66;
+}
+[data-theme="dark"] .book-gutter {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #00000018 35%,
+    #00000050 50%,
+    #00000018 65%,
+    transparent
+  );
+}
+[data-theme="dark"] .page-content mark.active-hit {
+  color: #251e16;
+}
+[data-theme="dark"] .page-content mark.annotation-important,
+[data-theme="dark"] .swatch-important {
+  background: #62552b;
+}
+[data-theme="dark"] .page-content mark.annotation-definition,
+[data-theme="dark"] .swatch-definition {
+  background: #3d5133;
+}
+[data-theme="dark"] .page-content mark.annotation-question,
+[data-theme="dark"] .swatch-question {
+  background: #57405f;
+}
+[data-theme="dark"] .page-content mark.annotation-todo,
+[data-theme="dark"] .swatch-todo {
+  background: #67462e;
+}
+/* PDF pages and image pixels keep their original colours in both themes. */
+.pdf-surface {
+  color-scheme: only light;
+}
+@media (max-width: 600px) {
+  .theme-toggle > span {
+    width: 25px;
+    height: 25px;
+  }
+  .header-actions {
+    gap: 5px;
+  }
+}

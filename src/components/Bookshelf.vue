@@ -280,11 +280,11 @@ function rename(id: string) {
     700 34px/1.5 "PMingLiU",
     serif;
   letter-spacing: 3px;
-  color: #594535;
+  color: var(--text-primary, #594535);
 }
 .shelf-heading p {
   font-size: 12px;
-  color: #9a8978;
+  color: var(--text-secondary, #9a8978);
   margin-top: 8px;
   letter-spacing: 1px;
 }
@@ -293,8 +293,8 @@ function rename(id: string) {
   justify-content: space-between;
   gap: 12px;
   padding: 13px;
-  background: #f7f3ed;
-  border: 1px solid #ddd2c6;
+  background: var(--surface-raised, #f7f3ed);
+  border: 1px solid var(--line, #ddd2c6);
   border-radius: 8px;
 }
 .shelf-primary-actions,
@@ -309,7 +309,7 @@ function rename(id: string) {
   justify-content: space-between;
   gap: 20px;
   margin: 29px 0 24px;
-  border-bottom: 1px solid #d8cfc3;
+  border-bottom: 1px solid var(--line, #d8cfc3);
   padding-bottom: 12px;
 }
 .shelf-tabs {
@@ -318,18 +318,18 @@ function rename(id: string) {
 }
 .shelf-tabs button {
   background: transparent;
-  color: #a3917e;
+  color: var(--text-secondary, #a3917e);
   font-size: 13px;
   padding: 8px 0;
 }
 .shelf-tabs button.active {
-  color: #775139;
-  box-shadow: 0 2px #88634f;
+  color: var(--text-primary, #775139);
+  box-shadow: 0 2px var(--shadow-deep, #88634f);
   border-radius: 0;
 }
 .shelf-tabs button > span {
   font-size: 10px;
-  background: #e3d9cb;
+  background: var(--surface-panel, #e3d9cb);
   border-radius: 4px;
   padding: 2px 6px;
   margin-left: 5px;
@@ -338,18 +338,18 @@ function rename(id: string) {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #a18c77;
+  color: var(--text-secondary, #a18c77);
 }
 .shelf-search input {
   width: 160px;
   border: 0;
   background: transparent;
   font-size: 11px;
-  color: #765e49;
+  color: var(--text-primary, #765e49);
   padding: 8px 0;
 }
 .shelf-search input::placeholder {
-  color: #ad9c8a;
+  color: var(--text-secondary, #ad9c8a);
 }
 .shelf-grid {
   display: grid;
@@ -357,11 +357,11 @@ function rename(id: string) {
   gap: 25px;
 }
 .book-card {
-  border: 1px solid #d9cebf;
+  border: 1px solid var(--line, #d9cebf);
   border-radius: 9px;
-  background: #f8f5ee;
+  background: var(--surface-raised, #f8f5ee);
   overflow: hidden;
-  box-shadow: 0 4px 9px #67503908;
+  box-shadow: 0 4px 9px var(--shadow-soft, #67503908);
 }
 .book-open {
   display: block;
@@ -369,7 +369,7 @@ function rename(id: string) {
   background: transparent;
   text-align: left;
   padding: 18px 18px 0;
-  color: #5d4939;
+  color: var(--text-primary, #5d4939);
 }
 .book-open:disabled {
   opacity: 1;
@@ -383,20 +383,20 @@ function rename(id: string) {
   padding: 20px 20px 18px 30px;
   border-radius: 3px 6px 6px 3px;
   background: #cbb69f;
-  border: 1px solid #bca489;
+  border: 1px solid var(--line-strong, #bca489);
   box-shadow:
-    3px 4px 0 #e9e1d4,
-    4px 5px 0 #c4b8a8;
+    3px 4px 0 var(--shadow-deep, #e9e1d4),
+    4px 5px 0 var(--shadow-deep, #c4b8a8);
   isolation: isolate;
   overflow: hidden;
 }
 .cover-1 {
   background: #c9b5ab;
-  border-color: #bca292;
+  border-color: var(--line-strong, #bca292);
 }
 .cover-2 {
   background: #c6c0b2;
-  border-color: #b4ac9a;
+  border-color: var(--line-strong, #b4ac9a);
 }
 .mini-book-line {
   position: absolute;
@@ -405,7 +405,7 @@ function rename(id: string) {
   bottom: 0;
   width: 1px;
   background: #7b5b3930;
-  box-shadow: 2px 0 #f0e5d33b;
+  box-shadow: 2px 0 var(--shadow-deep, #f0e5d33b);
 }
 .mini-book > svg {
   opacity: 0.6;
@@ -437,17 +437,17 @@ function rename(id: string) {
   position: absolute;
   right: 0;
   top: -13px;
-  background: #f5efe4;
-  border: 1px solid #d6c4ae;
+  background: var(--surface-panel, #f5efe4);
+  border: 1px solid var(--line, #d6c4ae);
   border-radius: 3px;
   font-size: 9px;
   padding: 2px 7px;
-  color: #8d6e4f;
+  color: var(--text-primary, #8d6e4f);
 }
 .book-preview {
   font-size: 11px;
   line-height: 1.9;
-  color: #9b8975;
+  color: var(--text-secondary, #9b8975);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -463,23 +463,23 @@ function rename(id: string) {
   font:
     10px Georgia,
     serif;
-  color: #a08b72;
+  color: var(--text-secondary, #a08b72);
 }
 .book-progress > div {
   height: 3px;
   flex: 1;
-  background: #e7ded1;
+  background: var(--surface-panel, #e7ded1);
   border-radius: 2px;
   overflow: hidden;
 }
 .book-progress > div > span {
   height: 100%;
   display: block;
-  background: #a58363;
+  background: var(--accent, #a58363);
 }
 .book-updated {
   font-size: 9px;
-  color: #b09d87;
+  color: var(--text-secondary, #b09d87);
   margin-top: 13px;
 }
 .book-card-actions {
@@ -487,11 +487,11 @@ function rename(id: string) {
   justify-content: space-between;
   gap: 8px;
   padding: 11px 18px;
-  border-top: 1px solid #e9e0d3;
+  border-top: 1px solid var(--line, #e9e0d3);
 }
 .book-card-actions button {
   background: transparent;
-  color: #957b63;
+  color: var(--text-secondary, #957b63);
   font-size: 10px;
   padding: 3px 0;
   display: flex;
@@ -499,13 +499,13 @@ function rename(id: string) {
   gap: 5px;
 }
 .book-card-actions button:hover {
-  color: #674632;
+  color: var(--text-primary, #674632);
 }
 .rename-form {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  border-top: 1px solid #e9e0d3;
+  border-top: 1px solid var(--line, #e9e0d3);
   padding: 12px;
 }
 .rename-form input {
@@ -513,24 +513,24 @@ function rename(id: string) {
   flex: 1;
   width: 100%;
   font-size: 11px;
-  border: 1px solid #d2bfa8;
-  background: #fffaf2;
+  border: 1px solid var(--line, #d2bfa8);
+  background: var(--surface-raised, #fffaf2);
   padding: 7px;
-  color: #785c43;
+  color: var(--text-primary, #785c43);
 }
 .rename-form button {
   font-size: 10px;
   padding: 6px;
-  background: #ece1d3;
+  background: var(--surface-panel, #ece1d3);
 }
 .rename-form span {
-  color: #a05339;
+  color: var(--text-primary, #a05339);
   font-size: 10px;
   width: 100%;
 }
 .trash-hint {
   font-size: 11px;
-  color: #a18e77;
+  color: var(--text-secondary, #a18e77);
   margin-bottom: 20px;
 }
 .recycled-book .mini-book {
@@ -544,18 +544,18 @@ function rename(id: string) {
   align-items: center;
   gap: 20px;
   text-align: center;
-  color: #b49a7e;
+  color: var(--text-secondary, #b49a7e);
 }
 .shelf-empty h2 {
   font:
     22px "PMingLiU",
     serif;
-  color: #8b7055;
+  color: var(--text-primary, #8b7055);
 }
 .shelf-empty p {
   font-size: 12px;
   line-height: 1.9;
-  color: #a89681;
+  color: var(--text-secondary, #a89681);
 }
 .shelf-local-note {
   display: flex;
@@ -563,7 +563,7 @@ function rename(id: string) {
   justify-content: center;
   gap: 7px;
   font-size: 10px;
-  color: #a59078;
+  color: var(--text-secondary, #a59078);
   margin-top: 40px;
   line-height: 1.8;
 }
@@ -596,7 +596,7 @@ function rename(id: string) {
   }
   .shelf-backup-actions {
     justify-content: flex-end;
-    border-top: 1px solid #e5dbcf;
+    border-top: 1px solid var(--line, #e5dbcf);
     padding-top: 7px;
   }
   .shelf-filter {
@@ -607,10 +607,10 @@ function rename(id: string) {
   }
   .shelf-search {
     width: 100%;
-    border: 1px solid #ded1c0;
+    border: 1px solid var(--line, #ded1c0);
     padding: 0 10px;
     border-radius: 5px;
-    background: #f5eee5;
+    background: var(--surface-panel, #f5eee5);
   }
   .shelf-search input {
     width: 100%;

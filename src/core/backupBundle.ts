@@ -9,6 +9,10 @@ import {
 } from "./media";
 import type { BookRecord, MediaAsset } from "./model";
 import { validateAnnotations } from "./annotations";
+import { theme } from "./theme";
+export type RestoredBooks = BookRecord[] & {
+  settings?: { theme?: "light" | "dark" };
+};
 export async function createBundle(books: BookRecord[]): Promise<Blob> {
   const characters = books.reduce(
     (n, b) => n + b.document.blocks.reduce((m, x) => m + x.html.length, 0),
@@ -46,7 +50,7 @@ export async function createBundle(books: BookRecord[]): Promise<Blob> {
       version: 2,
       books: records,
       assets,
-      settings: { theme: "earth", imageMaxEdge: 2000 },
+      settings: { theme: theme.value, imageMaxEdge: 2000 },
     }),
   );
   if (files["manifest.json"]!.length > 50 * 1024 * 1024)
@@ -61,7 +65,7 @@ export async function createBundle(books: BookRecord[]): Promise<Blob> {
     type: "application/zip",
   });
 }
-export async function readBundle(file: File): Promise<BookRecord[]> {
+export async function readBundle(file: File): Promise<RestoredBooks> {
   if (file.size > 110 * 1024 * 1024)
     throw new Error("備份超過 110MB，請選擇較小的紙間備份。");
   if (/\.json$/i.test(file.name)) return importBackup(await file.text());
@@ -265,5 +269,11 @@ export async function readBundle(file: File): Promise<BookRecord[]> {
       throw new Error("備份中的單本圖片超過限制。");
   }
   for (const asset of staged) pendingMedia.set(asset.id, asset);
-  return books;
+  const restored = books as RestoredBooks;
+  if (
+    manifest.settings?.theme === "light" ||
+    manifest.settings?.theme === "dark"
+  )
+    restored.settings = { theme: manifest.settings.theme };
+  return restored;
 }

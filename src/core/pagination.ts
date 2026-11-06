@@ -1,5 +1,6 @@
 import type { Block, Fragment, Notebook, PageSize, PaperPage } from "./model";
 import { sliceHtml } from "./normalize";
+import { imageLayoutStyle } from "./imageLayout";
 
 const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 export function fragmentHtml(
@@ -16,12 +17,11 @@ export function fragmentHtml(
     figure.className = `image-note layout-${block.image.layout}${start ? " figure-continuation" : ""}`;
     if (!start) {
       const frame = document.createElement("div");
-      frame.className = "note-image-frame";
+      frame.className = "note-image-frame proportional-image";
       frame.dataset.decoration = "true";
-      frame.style.setProperty(
-        "--image-ratio",
-        `${block.image.width}/${block.image.height}`,
-      );
+      Object.entries(
+        imageLayoutStyle(block.image.width, block.image.height),
+      ).forEach(([key, value]) => frame.style.setProperty(key, value));
       const img = document.createElement("img");
       img.dataset.mediaId = block.image.mediaId;
       img.alt = block.image.alt;
@@ -30,7 +30,12 @@ export function fragmentHtml(
       img.loading = "lazy";
       img.decoding = "async";
       frame.append(img);
-      figure.prepend(frame);
+      const visual = document.createElement("div");
+      visual.className = "figure-visual";
+      visual.append(frame);
+      const caption = figure.querySelector("figcaption");
+      if (caption) visual.append(caption);
+      figure.prepend(visual);
     }
     figure
       .querySelector<HTMLElement>("[data-figure-body]")

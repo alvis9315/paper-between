@@ -10,6 +10,7 @@ import {
   watch,
 } from "vue";
 import AppIcon from "./components/AppIcon.vue";
+import { theme, toggleTheme, restoreTheme } from "./core/theme";
 import BookView from "./components/BookView.vue";
 import PaginationBar from "./components/PaginationBar.vue";
 import TextEntryDialog from "./components/TextEntryDialog.vue";
@@ -370,6 +371,7 @@ async function restoreBackupFile(e: Event) {
     books.value = [...books.value, ...restored];
     restored.forEach((b) => dirtyIds.add(b.document.id));
     queueSave();
+    restoreTheme(restored.settings?.theme);
     notify(`已加入 ${restored.length} 本備份筆記，原有書架完整保留。`);
   } catch (e) {
     notify(
@@ -778,6 +780,19 @@ onBeforeUnmount(() => {
         ><span class="brand-subtitle">留一點時間，給閱讀。</span></a
       >
       <div class="header-actions">
+        <button
+          class="theme-toggle"
+          :aria-pressed="theme === 'dark'"
+          :aria-label="theme === 'dark' ? '切換白天模式' : '切換夜間模式'"
+          :title="theme === 'dark' ? '切換白天模式' : '切換夜間模式'"
+          @click="toggleTheme"
+        >
+          <span :class="{ active: theme === 'light' }"
+            ><AppIcon name="sun" :size="17" /></span
+          ><span :class="{ active: theme === 'dark' }"
+            ><AppIcon name="moon" :size="17"
+          /></span>
+        </button>
         <button
           class="quiet-button shelf-toggle"
           :disabled="busy || turning"

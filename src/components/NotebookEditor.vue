@@ -23,6 +23,7 @@ const count = ref(0);
 const bytes = ref(0);
 const quota = ref("");
 const fileInput = ref<HTMLInputElement>();
+const isEmpty = computed(() => editor.value?.isEmpty ?? true);
 let lastSignature = "";
 const editor = useEditor({
   parseOptions: { preserveWhitespace: "full" },
@@ -243,11 +244,43 @@ async function save() {
           @change="
             addImages([...(($event.target as HTMLInputElement).files || [])])
           "
-        /><EditorContent
-          :editor="editor"
-          class="rich-editor"
-          @drop="handleImageDrop"
         />
+        <div class="rich-editor" @drop="handleImageDrop">
+          <div
+            v-if="isEmpty && count === 0 && !processing"
+            class="editor-empty-guide"
+          >
+            <AppIcon name="image" :size="30" /><strong>從第一組圖文開始</strong>
+            <ol>
+              <li>
+                按「加入圖片」，一張圖片一組，可一次選多張並持續往下新增。
+              </li>
+              <li>直接把圖片拖曳到這個區塊，也可以貼上截圖。</li>
+            </ol>
+            <button
+              type="button"
+              class="add-image-group"
+              @click="fileInput?.click()"
+            >
+              ＋ 加入第一張圖片
+            </button>
+            <span>只想寫文字？也可以直接在下方輸入。</span>
+          </div>
+          <EditorContent
+            :editor="editor"
+            class="editor-content"
+            :class="{ empty: isEmpty }"
+          />
+          <button
+            v-if="count > 0"
+            class="add-image-group another-group"
+            type="button"
+            :disabled="!!processing"
+            @click="fileInput?.click()"
+          >
+            ＋ 再加入一組圖文<span>或直接拖放下一張圖片</span>
+          </button>
+        </div>
         <p class="image-limits">
           PNG／JPEG／WebP；原圖 10MB 內，自動縮至長邊 2,000px，儲存後每張最多
           2MB。{{ quota }}
@@ -287,7 +320,7 @@ async function save() {
 .editor-hint {
   font-size: 11px;
   line-height: 1.9;
-  color: #927c65;
+  color: var(--text-secondary, #927c65);
   margin: 9px 0 18px;
 }
 .notebook-editor form {
@@ -297,23 +330,23 @@ async function save() {
 }
 .notebook-editor label {
   font-size: 12px;
-  color: #80664f;
+  color: var(--text-primary, #80664f);
 }
 .notebook-editor input {
   font: inherit;
   font-size: 14px;
   padding: 10px 12px;
-  border: 1px solid #d8c9b7;
-  background: #fffaf3;
-  color: #614b39;
+  border: 1px solid var(--line, #d8c9b7);
+  background: var(--surface-raised, #fffaf3);
+  color: var(--text-primary, #614b39);
 }
 .rich-toolbar {
   display: flex;
   align-items: center;
   gap: 7px;
   flex-wrap: wrap;
-  background: #f2e8da;
-  border: 1px solid #dfcbb4;
+  background: var(--surface-panel, #f2e8da);
+  border: 1px solid var(--line, #dfcbb4);
   padding: 7px;
   border-radius: 5px;
 }
@@ -322,23 +355,23 @@ async function save() {
   align-items: center;
   gap: 5px;
   font-size: 11px;
-  background: #fff8ed;
-  color: #886344;
+  background: var(--surface-raised, #fff8ed);
+  color: var(--text-primary, #886344);
   padding: 7px 10px;
 }
 .rich-toolbar span {
   font-size: 10px;
-  color: #a18b72;
+  color: var(--text-secondary, #a18b72);
   margin-left: auto;
 }
 .rich-editor {
   max-height: 50dvh;
   min-height: 240px;
   overflow: auto;
-  border: 1px solid #d8c9b7;
+  border: 1px solid var(--line, #d8c9b7);
   border-radius: 6px;
-  background: #fffdf7;
-  color: #574b3e;
+  background: var(--surface-raised, #fffdf7);
+  color: var(--text-primary, #574b3e);
   font-size: 14px;
   line-height: 1.9;
   overflow-wrap: anywhere;
@@ -349,8 +382,56 @@ async function save() {
   min-height: 270px;
   outline: none;
 }
+.editor-empty-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 26px 22px 14px;
+  text-align: center;
+  color: var(--muted);
+  white-space: normal;
+}
+.editor-empty-guide strong {
+  font-size: 17px;
+  color: var(--heading);
+  font-weight: 500;
+}
+.editor-empty-guide ol {
+  font-size: 13px;
+  line-height: 1.9;
+  text-align: left;
+  margin: 0;
+  padding-left: 22px;
+  max-width: 480px;
+}
+.editor-empty-guide > span {
+  font-size: 12px;
+}
+.add-image-group {
+  background: var(--surface-inset);
+  border: 1px dashed var(--border-strong);
+  color: var(--accent);
+  font-size: 13px;
+  padding: 11px 18px;
+}
+.another-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  margin: 0 20px 20px;
+  width: calc(100% - 40px);
+}
+.another-group span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.editor-content.empty :deep(.tiptap) {
+  min-height: 80px;
+}
 .rich-editor:focus-within {
-  outline: 2px solid #aa8866;
+  outline: 2px solid var(--line-strong, #aa8866);
   outline-offset: 2px;
 }
 .rich-editor :deep(p) {
@@ -373,41 +454,41 @@ async function save() {
 }
 .rich-editor :deep(td),
 .rich-editor :deep(th) {
-  border: 1px solid #d9cbbc;
+  border: 1px solid var(--line, #d9cbbc);
   padding: 8px;
 }
 .rich-editor :deep(th) {
-  background: #f1e8db;
+  background: var(--surface-panel, #f1e8db);
 }
 .rich-editor :deep(.ProseMirror-selectednode) {
-  outline: 2px solid #a78b6c;
+  outline: 2px solid var(--line-strong, #a78b6c);
 }
 .image-limits {
   font-size: 10px;
-  color: #a08c75;
+  color: var(--text-secondary, #a08c75);
   line-height: 1.8;
 }
 .editor-footer {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-top: 1px solid #e1d5c7;
+  border-top: 1px solid var(--line, #e1d5c7);
   padding-top: 14px;
   margin-top: 3px;
 }
 .editor-footer p {
   font-size: 10px;
   line-height: 1.8;
-  color: #a08d78;
+  color: var(--text-secondary, #a08d78);
   margin-right: auto;
 }
 .editor-error {
   font-size: 12px;
-  color: #a05339;
+  color: var(--danger, #a05339);
 }
 .editor-processing {
   font-size: 12px;
-  color: #947047;
+  color: var(--text-primary, #947047);
 }
 @media (max-width: 600px) {
   .notebook-editor {

@@ -159,7 +159,7 @@ function submit() {
 }
 .text-entry-dialog > p {
   font-size: 12px;
-  color: #8b7c6d;
+  color: var(--text-secondary, #8b7c6d);
   line-height: 1.8;
 }
 .text-entry-form {
@@ -170,20 +170,20 @@ function submit() {
 }
 .text-entry-form > label {
   font-size: 12px;
-  color: #6f5c4c;
+  color: var(--text-primary, #6f5c4c);
   margin-top: 3px;
 }
 .text-entry-form > label > span {
   font-size: 10px;
-  color: #a19485;
+  color: var(--text-secondary, #a19485);
   margin-left: 7px;
 }
 .text-entry-form > input,
 .text-entry-form textarea {
   width: 100%;
-  border: 1px solid #d9cbbc;
-  background: #fefcf7;
-  color: #4b4036;
+  border: 1px solid var(--line, #d9cbbc);
+  background: var(--surface-raised, #fefcf7);
+  color: var(--text-primary, #4b4036);
   font: inherit;
   font-size: 13px;
   border-radius: 6px;
@@ -202,10 +202,10 @@ function submit() {
 }
 .text-entry-form textarea::placeholder,
 .text-entry-form > input::placeholder {
-  color: #aa9d8f;
+  color: var(--text-secondary, #aa9d8f);
 }
 .text-entry-form textarea:focus-visible {
-  outline: 2px solid #9f7d60;
+  outline: 2px solid var(--line-strong, #9f7d60);
   outline-offset: 2px;
 }
 .text-entry-options {
@@ -220,27 +220,27 @@ function submit() {
   align-items: center;
   gap: 7px;
   font-size: 11px;
-  color: #75604e;
+  color: var(--text-primary, #75604e);
   cursor: pointer;
 }
 .format-toggle input {
-  accent-color: #88634f;
+  accent-color: var(--accent, #88634f);
   margin: 0;
   width: 14px;
   height: 14px;
 }
 .text-length {
   font-size: 10px;
-  color: #a29384;
+  color: var(--text-secondary, #a29384);
 }
 .text-length.exceeded,
 .text-input-error {
-  color: #a05339;
+  color: var(--danger, #a05339);
 }
 .text-format-hint {
   font-size: 10px;
   line-height: 1.8;
-  color: #968775;
+  color: var(--text-secondary, #968775);
 }
 .text-input-error {
   font-size: 11px;
@@ -252,14 +252,14 @@ function submit() {
   align-items: center;
   justify-content: space-between;
   gap: 15px;
-  border-top: 1px solid #e4d9cd;
+  border-top: 1px solid var(--line, #e4d9cd);
   padding-top: 16px;
   margin-top: 4px;
 }
 .text-entry-footer > p {
   font-size: 10px;
   line-height: 1.8;
-  color: #9b8c7b;
+  color: var(--text-secondary, #9b8c7b);
 }
 .text-entry-actions {
   display: flex;

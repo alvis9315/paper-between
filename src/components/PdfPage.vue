@@ -273,18 +273,18 @@ onBeforeUnmount(() => {
   right: 5%;
   text-align: center;
   font-size: 13px;
-  color: #8a725c;
+  color: var(--text-primary, #8a725c);
 }
 .pdf-enlarge {
   position: absolute;
   bottom: 0;
   right: 0;
-  background: #f4ecdf;
-  border: 1px solid #d8c7b3;
+  background: var(--surface-panel, #f4ecdf);
+  border: 1px solid var(--line, #d8c7b3);
   border-radius: 4px;
   padding: 4px 9px;
   font-size: 11px;
-  color: #80634d;
+  color: var(--text-primary, #80634d);
 }
 .pdf-surface .textLayer {
   color-scheme: only light;
@@ -351,10 +351,10 @@ onBeforeUnmount(() => {
   height: 94dvh;
   display: flex;
   flex-direction: column;
-  background: #f6f0e6;
-  border: 1px solid #c4b099;
+  background: var(--surface-panel, #f6f0e6);
+  border: 1px solid var(--line-strong, #c4b099);
   border-radius: 9px;
-  box-shadow: 0 10px 80px #30271e55;
+  box-shadow: 0 10px 80px var(--shadow-deep, #30271e55);
   overflow: hidden;
 }
 .pdf-controls {
@@ -363,7 +363,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  color: #71563e;
+  color: var(--text-primary, #71563e);
   font-size: 14px;
 }
 .pdf-controls label {
@@ -373,15 +373,15 @@ onBeforeUnmount(() => {
 }
 .pdf-controls select,
 .pdf-controls button {
-  border: 1px solid #cebca7;
-  background: #fffaf1;
+  border: 1px solid var(--line, #cebca7);
+  background: var(--surface-raised, #fffaf1);
   padding: 7px;
   border-radius: 5px;
-  color: #71563e;
+  color: var(--text-primary, #71563e);
 }
 .pdf-zoom-hint {
   font-size: 12px;
-  color: #8a7560;
+  color: var(--text-secondary, #8a7560);
   padding: 0 18px 10px;
   margin: 0;
 }
@@ -391,7 +391,7 @@ onBeforeUnmount(() => {
   overflow: auto;
   overscroll-behavior: contain;
   padding: 12px;
-  background: #d8cfc2;
+  background: var(--surface-inset, #d8cfc2);
 }
 .pdf-modal {
   z-index: 150;

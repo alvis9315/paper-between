@@ -1,6 +1,18 @@
 <script setup lang="ts">
 defineProps<{ name: string; size?: number }>();
 const paths: Record<string, string[]> = {
+  sun: [
+    "M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+    "M12 2v2",
+    "M12 20v2",
+    "M2 12h2",
+    "M20 12h2",
+    "m5 5 1.5 1.5",
+    "M17.5 17.5 19 19",
+    "M5 19l1.5-1.5",
+    "M17.5 6.5 19 5",
+  ],
+  moon: ["M21 13a9 9 0 1 1-10-10 7 7 0 0 0 10 10Z"],
   image: ["M3 3h18v18H3z", "m3 16 5-5 4 4 3-3 6 6", "M15 7h.01"],
   download: ["M12 3v12", "m7 10 5 5 5-5", "M4 17v4h16v-4"],
   restore: ["M3 11a9 9 0 1 1 3 8", "M3 4v7h7", "M12 7v5l3 2"],
