@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, ref, watch, defineAsyncComponent } from "vue";
+const PdfPage = defineAsyncComponent(() => import("./PdfPage.vue"));
 import { mediaUrl } from "../core/media";
 import type { PaperPage, SearchHit } from "../core/model";
 import { highlightPage } from "../core/search";
@@ -17,7 +18,10 @@ const props = defineProps<{
 const content = ref<HTMLElement>();
 const html = computed(() =>
   highlightPage(
-    markAnnotations(props.page?.fragments.map((f) => f.html).join("") || "", props.annotations || []),
+    markAnnotations(
+      props.page?.fragments.map((f) => f.html).join("") || "",
+      props.annotations || [],
+    ),
     props.hits,
     props.activeHit,
   ),
@@ -55,7 +59,15 @@ watch(
     <div class="page-running-title" aria-hidden="true">
       {{ page ? title : "" }}
     </div>
-    <div ref="content" class="page-content" v-html="html"></div>
+    <div v-if="page?.fragments[0]?.pdf" class="page-content pdf-page-content">
+      <PdfPage
+        :fragment="page.fragments[0]"
+        :hits="hits"
+        :active-hit="activeHit"
+        :annotations="annotations"
+      />
+    </div>
+    <div v-else ref="content" class="page-content" v-html="html"></div>
     <footer class="paper-footer">
       <span>{{ page ? "紙 間" : "" }}</span
       ><span>{{ page ? String(page.index + 1).padStart(2, "0") : "" }}</span

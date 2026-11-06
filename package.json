@@ -1,12 +1,12 @@
 {
   "name": "paper-between-notebook",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "node scripts/copy-pdf-assets.mjs && vite --host 127.0.0.1",
     "typecheck": "vue-tsc --noEmit",
-    "build": "npm run typecheck && node scripts/collect-licenses.mjs && vite build",
+    "build": "npm run typecheck && node scripts/collect-licenses.mjs && node scripts/copy-pdf-assets.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "playwright test"
   },

@@ -11,7 +11,10 @@ const emit = defineEmits<{
   open: [id: string];
   create: [];
   importWord: [];
+  importPdf: [];
+  createRich: [];
   backup: [];
+  backupOne: [id: string];
   restoreBackup: [];
   rename: [id: string, title: string];
   duplicate: [id: string];
@@ -93,6 +96,20 @@ function rename(id: string) {
           @click="emit('importWord')"
         >
           <AppIcon name="upload" />匯入 Word
+        </button>
+        <button
+          class="toolbar-button"
+          :disabled="busy"
+          @click="emit('importPdf')"
+        >
+          <AppIcon name="file" />匯入 PDF
+        </button>
+        <button
+          class="toolbar-button"
+          :disabled="busy"
+          @click="emit('createRich')"
+        >
+          <AppIcon name="image" />圖文筆記
         </button>
       </div>
       <div class="shelf-backup-actions">
@@ -189,6 +206,9 @@ function rename(id: string) {
           ><span v-if="renameError" role="alert">{{ renameError }}</span>
         </form>
         <div v-else class="book-card-actions">
+          <button :disabled="busy" @click="emit('backupOne', b.document.id)">
+            備份此本
+          </button>
           <template v-if="!trash"
             ><button :disabled="busy" @click="startRename(b)">重新命名</button
             ><button :disabled="busy" @click="emit('duplicate', b.document.id)">

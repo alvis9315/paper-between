@@ -56,6 +56,22 @@ export async function paginate(
     if (signal.aborted) throw new DOMException("排版已取消", "AbortError");
   };
   abort();
+  if (doc.pdfAssetId) {
+    progress(100);
+    return doc.blocks.map((b, index) => ({
+      index,
+      fragments: [
+        {
+          blockId: b.id,
+          start: 0,
+          end: b.text.length,
+          html: "",
+          repeatedHeader: false,
+          pdf: b.pdf,
+        },
+      ],
+    }));
+  }
   const host = document.createElement("div");
   host.className = "measurement-host";
   host.setAttribute("aria-hidden", "true");

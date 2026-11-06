@@ -34,6 +34,33 @@ watch(
   },
 );
 onBeforeUnmount(() => observer?.disconnect());
+function move(direction: number) {
+  const position = props.getPos();
+  if (typeof position !== "number") return;
+  const { state, view } = props.editor;
+  const resolved = state.doc.resolve(position),
+    index = resolved.index(0);
+  if (
+    resolved.depth !== 0 ||
+    index + direction < 0 ||
+    index + direction >= state.doc.childCount
+  )
+    return;
+  const neighbour = state.doc.child(index + direction),
+    current = state.doc.child(index);
+  const from = direction < 0 ? position - neighbour.nodeSize : position;
+  const to =
+    direction < 0
+      ? position + current.nodeSize
+      : position + current.nodeSize + neighbour.nodeSize;
+  const tr = state.tr.replaceWith(
+    from,
+    to,
+    direction < 0 ? [current, neighbour] : [neighbour, current],
+  );
+  view.dispatch(tr);
+  props.editor.commands.focus();
+}
 </script>
 <template>
   <NodeViewWrapper
@@ -77,6 +104,8 @@ onBeforeUnmount(() => observer?.disconnect());
         >
           <option value="side">左圖右文</option>
           <option value="stacked">上圖下文</option></select
+        ><button type="button" @click="move(-1)">上移</button
+        ><button type="button" @click="move(1)">下移</button
         ><button type="button" @click="deleteNode()">移除這組</button>
       </div>
     </div>

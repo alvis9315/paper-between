@@ -72,6 +72,16 @@ export async function saveLibrary(
       const writtenMedia: string[] = [];
       try {
         const ids = new Set(state.books.flatMap((b) => mediaIds(b.document)));
+        // Atomic with the snapshot; copies and trash retain their shared assets.
+        const cursor = store.openCursor(
+          IDBKeyRange.bound("media:", "media:\uffff"),
+        );
+        cursor.onsuccess = () => {
+          const item = cursor.result;
+          if (!item) return;
+          if (!ids.has(String(item.key).slice(6))) item.delete();
+          item.continue();
+        };
         for (const [id, asset] of pendingMedia)
           if (ids.has(id)) {
             store.put(asset, `media:${id}`);

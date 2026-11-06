@@ -14,9 +14,15 @@ import BookView from "./components/BookView.vue";
 import PaginationBar from "./components/PaginationBar.vue";
 import TextEntryDialog from "./components/TextEntryDialog.vue";
 import Bookshelf from "./components/Bookshelf.vue";
-const NotebookEditor=defineAsyncComponent(()=>import('./components/NotebookEditor.vue'));
-import HighlightPanel from './components/HighlightPanel.vue';
-import { categories, selectionTargets, reanchorAnnotations } from './core/annotations';
+const NotebookEditor = defineAsyncComponent(
+  () => import("./components/NotebookEditor.vue"),
+);
+import HighlightPanel from "./components/HighlightPanel.vue";
+import {
+  categories,
+  selectionTargets,
+  reanchorAnnotations,
+} from "./core/annotations";
 import { createDemo } from "./data/demo";
 import { paginate } from "./core/pagination";
 import { importDocx } from "./core/importer";
@@ -39,7 +45,8 @@ import type {
   PaperPage,
   SearchHit,
   BookRecord,
-  Annotation, AnnotationTarget,
+  Annotation,
+  AnnotationTarget,
 } from "./core/model";
 
 const doc = shallowRef<Notebook>();
@@ -49,6 +56,8 @@ const size = ref<PageSize>({ width: 500, height: 650, mobile: false });
 const book = ref<InstanceType<typeof BookView>>();
 const workspace = ref<HTMLElement>();
 const fileInput = ref<HTMLInputElement>();
+const pdfInput = ref<HTMLInputElement>();
+const parseMessage = ref("正在解析文件…");
 const searchInput = ref<HTMLInputElement>();
 const searchOpen = ref(false);
 const importOpen = ref(false);
@@ -57,13 +66,14 @@ const textOpen = ref(false);
 const shelfOpen = ref(false);
 const editorOpen = ref(false);
 const richNew = ref(false);
-const highlightOpen=ref(false);
-const pendingTargets=shallowRef<AnnotationTarget[]>([]);
-const selectedAnnotation=ref<string>();
-let deletedAnnotation: {bookId:string;annotation:Annotation}|undefined;
+const highlightOpen = ref(false);
+const pendingTargets = shallowRef<AnnotationTarget[]>([]);
+const selectedAnnotation = ref<string>();
+let deletedAnnotation: { bookId: string; annotation: Annotation } | undefined;
 const books = shallowRef<BookRecord[]>([]);
 const activeId = ref<string>();
 const backupInput = ref<HTMLInputElement>();
+const backupWorking = ref(false);
 const dirtyIds = new Set<string>();
 let saveChain = Promise.resolve();
 const query = ref("");
@@ -323,26 +333,40 @@ function restoreBook(id: string) {
   queueSave();
   notify("筆記已還原到書架。");
 }
-async function downloadBackup() {
+async function downloadBackup(id?: string) {
+  if (backupWorking.value) return;
+  backupWorking.value = true;
   try {
+    notify("正在打包筆記、圖片與重點，請稍候…");
     captureCurrent();
-    const data = await createBundle(books.value);
+    const selected = id
+      ? books.value.filter((b) => b.document.id === id)
+      : books.value;
+    const data = await createBundle(selected);
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
     a.href = url;
     a.download = `紙間書架備份-${new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Taipei" }).format(new Date())}.zip`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    notify("書架備份已下載，包含回收桶與閱讀位置。");
+    notify(
+      id
+        ? "這本筆記的完整備份已下載。"
+        : "書架備份已下載，包含圖片、PDF、重點、回收桶與閱讀位置。",
+    );
   } catch (e) {
     notify(e instanceof Error ? e.message : "無法匯出備份。", true);
+  } finally {
+    backupWorking.value = false;
   }
 }
 async function restoreBackupFile(e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
-  if (!file || busy.value) return;
+  if (!file || busy.value || backupWorking.value) return;
+  backupWorking.value = true;
   try {
+    notify("正在檢查備份與媒體完整性，請稍候…");
     const restored = await readBundle(file);
     books.value = [...books.value, ...restored];
     restored.forEach((b) => dirtyIds.add(b.document.id));
@@ -354,62 +378,135 @@ async function restoreBackupFile(e: Event) {
       true,
     );
   } finally {
+    backupWorking.value = false;
     input.value = "";
   }
 }
 async function saveEdited(candidate: Notebook) {
-  if(candidate.id===doc.value?.id) candidate.annotations=reanchorAnnotations(doc.value.annotations||[],candidate);
+  if (candidate.id === doc.value?.id)
+    candidate.annotations = reanchorAnnotations(
+      doc.value.annotations || [],
+      candidate,
+    );
+  captureCurrent();
   editorOpen.value = false;
+  shelfOpen.value = false;
+  await nextTick();
   currentAnchor = { blockId: candidate.blocks[0]!.id, offset: 0 };
-  pendingImportMessage = "這本筆記已更新並重新分頁。";
+  pendingImportMessage = richNew.value
+    ? "圖文筆記已建立，原有筆記保留在書架。"
+    : "這本筆記已更新並重新分頁。";
   await layout(candidate, currentAnchor);
 }
 function captureSelection() {
-  if(busy.value||turning.value||!doc.value||!workspace.value) return;
-  pendingTargets.value=selectionTargets(workspace.value,doc.value);
+  if (busy.value || turning.value || !doc.value || !workspace.value) return;
+  pendingTargets.value = selectionTargets(workspace.value, doc.value);
 }
-function setAnnotations(bookId:string,annotations:Annotation[]) {
-  books.value=books.value.map(b=>b.document.id===bookId?{...b,document:{...b.document,annotations},updatedAt:Date.now()}:b);
-  if(doc.value?.id===bookId) doc.value={...doc.value,annotations};
-  dirtyIds.add(bookId); queueSave();
+function setAnnotations(bookId: string, annotations: Annotation[]) {
+  books.value = books.value.map((b) =>
+    b.document.id === bookId
+      ? {
+          ...b,
+          document: { ...b.document, annotations },
+          updatedAt: Date.now(),
+        }
+      : b,
+  );
+  if (doc.value?.id === bookId) doc.value = { ...doc.value, annotations };
+  dirtyIds.add(bookId);
+  queueSave();
 }
-function addAnnotation(category:Annotation['category']) {
-  if(!doc.value||!pendingTargets.value.length) return;
-  if((doc.value.annotations?.length||0)>=10000){notify('每本最多 10,000 筆重點，請拆成多本筆記。',true);return;}
-  const annotation:Annotation={id:crypto.randomUUID(),targets:pendingTargets.value,category,tags:[],comment:'',createdAt:Date.now(),updatedAt:Date.now(),status:'linked'};
-  setAnnotations(doc.value.id,[...(doc.value.annotations||[]),annotation]);
-  pendingTargets.value=[]; window.getSelection()?.removeAllRanges(); notify(`已收好一筆${categories[category]}。`);
+function addAnnotation(category: Annotation["category"]) {
+  if (!doc.value || !pendingTargets.value.length) return;
+  if ((doc.value.annotations?.length || 0) >= 10000) {
+    notify("每本最多 10,000 筆重點，請拆成多本筆記。", true);
+    return;
+  }
+  const annotation: Annotation = {
+    id: crypto.randomUUID(),
+    targets: pendingTargets.value,
+    category,
+    tags: [],
+    comment: "",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    status: "linked",
+  };
+  setAnnotations(doc.value.id, [...(doc.value.annotations || []), annotation]);
+  pendingTargets.value = [];
+  window.getSelection()?.removeAllRanges();
+  notify(`已收好一筆${categories[category]}。`);
 }
-function updateAnnotation(id:string,annotation:Annotation){
-  const record=books.value.find(b=>b.document.id===id); if(!record)return;
-  setAnnotations(id,(record.document.annotations||[]).map(a=>a.id===annotation.id?annotation:a));
+function updateAnnotation(id: string, annotation: Annotation) {
+  const record = books.value.find((b) => b.document.id === id);
+  if (!record) return;
+  setAnnotations(
+    id,
+    (record.document.annotations || []).map((a) =>
+      a.id === annotation.id ? annotation : a,
+    ),
+  );
 }
-function removeAnnotation(id:string,annotationId:string){
-  const record=books.value.find(b=>b.document.id===id), annotation=record?.document.annotations?.find(a=>a.id===annotationId);
-  if(!record||!annotation)return; deletedAnnotation={bookId:id,annotation};
-  setAnnotations(id,record.document.annotations!.filter(a=>a.id!==annotationId)); notify('已刪除重點，可在重點面板復原。');
+function removeAnnotation(id: string, annotationId: string) {
+  const record = books.value.find((b) => b.document.id === id),
+    annotation = record?.document.annotations?.find(
+      (a) => a.id === annotationId,
+    );
+  if (!record || !annotation) return;
+  deletedAnnotation = { bookId: id, annotation };
+  setAnnotations(
+    id,
+    record.document.annotations!.filter((a) => a.id !== annotationId),
+  );
+  notify("已刪除重點，可在重點面板復原。");
 }
-function undoAnnotation(){
-  if(!deletedAnnotation){notify('目前沒有可復原的重點。');return;}
-  const {bookId,annotation}=deletedAnnotation;
-  const record=books.value.find(b=>b.document.id===bookId);
-  if(record){setAnnotations(bookId,[...(record.document.annotations||[]),annotation]);deletedAnnotation=undefined;notify('重點已復原。');}
+function undoAnnotation() {
+  if (!deletedAnnotation) {
+    notify("目前沒有可復原的重點。");
+    return;
+  }
+  const { bookId, annotation } = deletedAnnotation;
+  const record = books.value.find((b) => b.document.id === bookId);
+  if (record) {
+    setAnnotations(bookId, [
+      ...(record.document.annotations || []),
+      annotation,
+    ]);
+    deletedAnnotation = undefined;
+    notify("重點已復原。");
+  }
 }
-async function locateAnnotation(id:string,a:Annotation){
-  if(busy.value||turning.value||a.status!=='linked')return;
-  if(doc.value?.id!==id) await openBook(id);
-  const target=a.targets[0]!;
-  jump(pageForAnchor(pages.value,{blockId:target.blockId,offset:target.start})+1,{blockId:target.blockId,offset:target.start});
-  selectedAnnotation.value=a.id;
-  workspace.value?.scrollIntoView({behavior:'smooth',block:'start'});
+async function locateAnnotation(id: string, a: Annotation) {
+  if (busy.value || turning.value || a.status !== "linked") return;
+  if (doc.value?.id !== id) await openBook(id);
+  const target = a.targets[0]!;
+  jump(
+    pageForAnchor(pages.value, {
+      blockId: target.blockId,
+      offset: target.start,
+    }) + 1,
+    { blockId: target.blockId, offset: target.start },
+  );
+  selectedAnnotation.value = a.id;
+  workspace.value?.scrollIntoView({
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant"
+      : "smooth",
+    block: "start",
+  });
 }
-function annotationClick(event:MouseEvent){
-  if(window.getSelection()?.toString())return;
-  const id=(event.target as HTMLElement).closest<HTMLElement>('[data-annotation-id]')?.dataset.annotationId;
-  if(id){selectedAnnotation.value=id;highlightOpen.value=true;}
+function annotationClick(event: MouseEvent) {
+  if (window.getSelection()?.toString()) return;
+  const id = (event.target as HTMLElement).closest<HTMLElement>(
+    "[data-annotation-id]",
+  )?.dataset.annotationId;
+  if (id) {
+    selectedAnnotation.value = id;
+    highlightOpen.value = true;
+  }
 }
 function changed(next: number) {
-  pendingTargets.value=[];
+  pendingTargets.value = [];
   index.value = next;
   currentAnchor = pendingNavigationAnchor || anchorForPage(pages.value, next);
   pendingNavigationAnchor = undefined;
@@ -466,7 +563,14 @@ async function loadFile(file?: File) {
   parsing.value = true;
   importOpen.value = false;
   try {
-    const candidate = await importDocx(file);
+    parseMessage.value = "正在解析文件…";
+    const candidate = /\.pdf$/i.test(file.name)
+      ? await (
+          await import("./core/pdf")
+        ).importPdf(file, (message) => {
+          parseMessage.value = message;
+        })
+      : await importDocx(file);
     captureCurrent();
     shelfOpen.value = false;
     await nextTick();
@@ -483,6 +587,7 @@ async function loadFile(file?: File) {
     );
   } finally {
     if (fileInput.value) fileInput.value.value = "";
+    if (pdfInput.value) pdfInput.value.value = "";
     if (pendingResize.value) {
       pendingResize.value = false;
       scheduleResize();
@@ -494,6 +599,7 @@ function pickFile(e: Event) {
 }
 function dropFile(e: DragEvent) {
   dragOver.value = false;
+  if (editorOpen.value || textOpen.value) return;
   if (e.dataTransfer?.files.length) void loadFile(e.dataTransfer.files[0]);
 }
 async function demo() {
@@ -530,6 +636,7 @@ function toggleSearch() {
 }
 function keydown(e: KeyboardEvent) {
   const target = e.target as HTMLElement;
+  if (target.closest(".pdf-dialog")) return;
   if (e.key === "Escape") {
     importOpen.value = false;
     helpOpen.value = false;
@@ -600,7 +707,13 @@ watch(query, (value) => {
     resultLimit.value = 60;
   }, 260);
 });
-watch(()=>doc.value?.id,()=>{pendingTargets.value=[];highlightOpen.value=false;});
+watch(
+  () => doc.value?.id,
+  () => {
+    pendingTargets.value = [];
+    highlightOpen.value = false;
+  },
+);
 watch([importOpen, helpOpen], async ([openImport, openHelp]) => {
   if (openImport || openHelp) {
     await nextTick();
@@ -610,7 +723,7 @@ watch([importOpen, helpOpen], async ([openImport, openHelp]) => {
 onMounted(async () => {
   window.addEventListener("resize", scheduleResize);
   window.addEventListener("keydown", keydown);
-  document.addEventListener('selectionchange',captureSelection);
+  document.addEventListener("selectionchange", captureSelection);
   resizeObserver = new ResizeObserver(scheduleResize);
   if (workspace.value) resizeObserver.observe(workspace.value);
   try {
@@ -642,7 +755,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   window.removeEventListener("resize", scheduleResize);
   window.removeEventListener("keydown", keydown);
-  document.removeEventListener('selectionchange',captureSelection);
+  document.removeEventListener("selectionchange", captureSelection);
   [resizeTimer, queryTimer, saveTimer, toastTimer, locatorTimer].forEach(
     clearTimeout,
   );
@@ -653,7 +766,10 @@ onBeforeUnmount(() => {
   <div
     class="app"
     @dragover.prevent="
-      dragOver = !!$event.dataTransfer?.types.includes('Files')
+      dragOver =
+        !editorOpen &&
+        !textOpen &&
+        !!$event.dataTransfer?.types.includes('Files')
     "
     @drop.prevent="dropFile"
   >
@@ -680,11 +796,17 @@ onBeforeUnmount(() => {
       v-if="shelfOpen"
       :books="books"
       :active-id="activeId"
-      :busy="busy"
+      :busy="busy || backupWorking"
       @open="openBook"
       @create="textOpen = true"
       @import-word="fileInput?.click()"
+      @import-pdf="pdfInput?.click()"
+      @create-rich="
+        richNew = true;
+        editorOpen = true;
+      "
       @backup="downloadBackup"
+      @backup-one="downloadBackup"
       @restore-backup="backupInput?.click()"
       @rename="renameBook"
       @duplicate="duplicateBook"
@@ -734,7 +856,12 @@ onBeforeUnmount(() => {
         <div class="toolbar-right">
           <button
             class="toolbar-button edit-current-button"
-            :disabled="busy || turning || !doc"
+            :disabled="busy || turning || !doc || !!doc.pdfAssetId"
+            :title="
+              doc?.pdfAssetId
+                ? 'PDF 保留原貌；文字修改請另建圖文筆記'
+                : '編輯這本筆記'
+            "
             @click="
               richNew = false;
               editorOpen = true;
@@ -768,6 +895,13 @@ onBeforeUnmount(() => {
           >
             <AppIcon name="upload" :size="17" />匯入 Word
           </button>
+          <button
+            class="toolbar-button"
+            :disabled="busy || turning"
+            @click="pdfInput?.click()"
+          >
+            <AppIcon name="file" :size="17" />匯入 PDF
+          </button>
         </div>
       </section>
       <input
@@ -779,6 +913,19 @@ onBeforeUnmount(() => {
         aria-label="選擇 Word 文件"
         @change="pickFile"
       />
+      <input
+        ref="pdfInput"
+        id="pdf-file"
+        class="visually-hidden"
+        type="file"
+        accept=".pdf,application/pdf"
+        aria-label="選擇 PDF 文件"
+        @change="pickFile"
+      />
+      <p v-if="doc?.pdfAssetId" class="pdf-reading-note">
+        PDF 原貌閱讀 · 圖片與文字位置保留 · 點「放大閱讀」可調整倍率 ·
+        修改文字請另建圖文筆記
+      </p>
 
       <section v-if="searchOpen" class="search-panel" aria-label="全文搜尋">
         <div class="search-top">
@@ -891,7 +1038,7 @@ onBeforeUnmount(() => {
         <div v-else class="initial-paper"></div>
         <div v-if="busy" class="loading-overlay" role="status">
           <span class="loading-book"><AppIcon name="book" :size="30" /></span
-          ><strong>{{ parsing ? "正在解析 Word…" : "正在整理紙頁…" }}</strong
+          ><strong>{{ parsing ? parseMessage : "正在整理紙頁…" }}</strong
           ><span>{{
             parsing
               ? "文件只在你的瀏覽器內處理"
@@ -905,11 +1052,42 @@ onBeforeUnmount(() => {
           ></progress>
         </div>
       </div>
-      <div v-if="pendingTargets.length" class="selection-tools" role="toolbar" aria-label="畫重點" @pointerdown.prevent>
-        <span>畫重點</span><button v-for="(label,key) in categories" :key="key" :class="`swatch-${key}`" @click="addAnnotation(key)">{{label}}</button><button aria-label="取消畫重點" @click="pendingTargets=[]">×</button>
+      <div
+        v-if="pendingTargets.length"
+        class="selection-tools"
+        role="toolbar"
+        aria-label="畫重點"
+        @pointerdown.prevent
+      >
+        <span>畫重點</span
+        ><button
+          v-for="(label, key) in categories"
+          :key="key"
+          :class="`swatch-${key}`"
+          @click="addAnnotation(key)"
+        >
+          {{ label }}</button
+        ><button aria-label="取消畫重點" @click="pendingTargets = []">×</button>
       </div>
-      <div class="highlight-entry"><button :disabled="busy || turning" @click="highlightOpen=!highlightOpen">重點筆記 <span>{{doc?.annotations?.length||0}}</span></button><span>選取文字，留下你的重點</span></div>
-      <HighlightPanel v-if="highlightOpen" :books="books" :active-id="activeId" :selected="selectedAnnotation" @close="highlightOpen=false" @locate="locateAnnotation" @update="updateAnnotation" @remove="removeAnnotation" @undo="undoAnnotation" />
+      <div class="highlight-entry">
+        <button
+          :disabled="busy || turning"
+          @click="highlightOpen = !highlightOpen"
+        >
+          重點筆記 <span>{{ doc?.annotations?.length || 0 }}</span></button
+        ><span>選取文字，留下你的重點</span>
+      </div>
+      <HighlightPanel
+        v-if="highlightOpen"
+        :books="books"
+        :active-id="activeId"
+        :selected="selectedAnnotation"
+        @close="highlightOpen = false"
+        @locate="locateAnnotation"
+        @update="updateAnnotation"
+        @remove="removeAnnotation"
+        @undo="undoAnnotation"
+      />
       <PaginationBar
         v-if="pages.length"
         :index="index"
@@ -949,7 +1127,7 @@ onBeforeUnmount(() => {
     />
     <TextEntryDialog
       :open="textOpen"
-      :can-append="!!doc"
+      :can-append="!!doc && !doc.pdfAssetId"
       @close="textOpen = false"
       @create="createTextNotebook"
     />
@@ -1013,7 +1191,8 @@ onBeforeUnmount(() => {
           <div class="import-information">
             <AppIcon name="shield" :size="18" />
             <p>
-              文件在瀏覽器內解析，不會上傳伺服器。保留標題、段落、粗體、清單與基本表格；圖片、文字方塊與複雜版面不支援，略過項目會另行提醒。
+              文件在瀏覽器內解析，不會上傳伺服器。保留標題、段落、粗體、清單、基本表格與內嵌圖片；文字方塊及複雜版面可能簡化，略過項目會另行提醒。PDF
+              請使用工具列的「匯入 PDF」。
             </p>
           </div>
           <p class="dialog-footnote">
@@ -1035,6 +1214,18 @@ onBeforeUnmount(() => {
               「我的書架」可以切換、重新命名、複製及移除筆記；回收桶可還原。
             </li>
             <li>請定期下載書架備份；匯入備份會加入書架並保留原有筆記。</li>
+            <li>
+              「圖文筆記」可持續加入多張圖片；PNG/JPEG/WebP 每張原檔上限
+              10MB，自動縮圖，每本最多 50 張。
+            </li>
+            <li>
+              選取文字可分類畫重點，在「重點筆記」加入標籤和心得；備份會包含圖片、PDF
+              與重點。
+            </li>
+            <li>
+              PDF 上限 10MB、200
+              頁，保留原頁面與圖片；掃描頁無文字層時無法搜尋，尚未提供 OCR。
+            </li>
           </ul></template
         >
       </section>
@@ -1047,7 +1238,7 @@ onBeforeUnmount(() => {
     >
       <AppIcon name="upload" :size="42" /><strong
         >放開檔案，開始整理你的筆記</strong
-      ><span>.docx · 最大 10MB · 不上傳伺服器</span>
+      ><span>.docx / .pdf · 最大 10MB · 不上傳伺服器</span>
     </div>
   </div>
 </template>

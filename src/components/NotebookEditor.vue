@@ -25,6 +25,7 @@ const quota = ref("");
 const fileInput = ref<HTMLInputElement>();
 let lastSignature = "";
 const editor = useEditor({
+  parseOptions: { preserveWhitespace: "full" },
   extensions: [
     StarterKit,
     TableKit.configure({ table: { resizable: false } }),
@@ -49,22 +50,24 @@ const editor = useEditor({
       }
       return false;
     },
-    handleDrop: (_view, event) => {
-      const files = [...(event.dataTransfer?.files || [])];
-      if (files.length) {
-        event.preventDefault();
-        event.stopPropagation();
-        void addImages(files);
-        return true;
-      }
-      return false;
-    },
+    handleDrop: (_view, event) => handleImageDrop(event),
   },
   onUpdate: () => {
     void updateUsage();
   },
 });
-onMounted(async()=>{ await updateUsage(); quota.value=await storageUsage(); });
+onMounted(async () => {
+  await updateUsage();
+  quota.value = await storageUsage();
+});
+function handleImageDrop(event: DragEvent) {
+  const files = [...(event.dataTransfer?.files || [])];
+  if (!files.length) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  void addImages(files);
+  return true;
+}
 async function updateUsage() {
   if (!editor.value) return;
   const ids: string[] = [];
@@ -92,6 +95,7 @@ watch(
       processing.value = "";
       editor.value?.commands.setContent(
         props.document ? notebookHtml(props.document) : "<p></p>",
+        { parseOptions: { preserveWhitespace: "full" } },
       );
       lastSignature = "";
       void updateUsage();
@@ -239,7 +243,11 @@ async function save() {
           @change="
             addImages([...(($event.target as HTMLInputElement).files || [])])
           "
-        /><EditorContent :editor="editor" class="rich-editor" />
+        /><EditorContent
+          :editor="editor"
+          class="rich-editor"
+          @drop="handleImageDrop"
+        />
         <p class="image-limits">
           PNG／JPEG／WebP；原圖 10MB 內，自動縮至長邊 2,000px，儲存後每張最多
           2MB。{{ quota }}
