@@ -25,11 +25,11 @@ tags:
 
 ## 正在進行
 
-1.7.0 build 與 40 個 Chrome／WebKit 執行個案已通過，正在推送與部署。發布成功前，以部署紀錄中的 1.6.2 為線上版。
+1.7.0 已通過 build／40 個跨引擎執行個案，已同步 GitHub 並部署成功。沒有未完成的本輪程式工作。
 
 ## 下一個明確動作
 
-推送與部署 1.7.0，回填來源及版本／部署 ID。後續由使用者確認原兩份 PDF 在 Safari 26.0.1 的實際結果。
+由使用者確認原兩份 PDF 在 Safari 26.0.1 的實際結果，以及小卡／重排操作。後續若擴充，再以原檔驗證自動卡片拆解或 OCR；不要把尚未實作項目描述為已提供。
 
 ## 最新驗證
 
@@ -48,7 +48,16 @@ tags:
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 
-### 最新：1.6.2
+### 最新：1.7.0
+
+- 原始碼版本：1.7.0；Sites 版本：13。
+- 部署來源 commit：`b18629450e37a81c20260ca66737ba7b573dd337`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_007b131bb3e88191a581dbc9f6e9695d`
+- deployment_id：`appgdep_6aede06855708191a8bc591e3dbf1d2c`
+- 結果：`succeeded`，2026-11-06 22:13（Asia/Taipei）。
+- 後續純文件 commit 回填證據，不改變實際部署來源。
+
+### 歷史：1.6.2
 
 - 原始碼版本：1.6.2；Sites 版本：12。
 - 部署來源 commit：`04f165be0c41b691b92d20012ee756605e54496c`。

@@ -16,7 +16,7 @@
 - 修正 WebKit 可重現的 Blob 寫入錯誤，媒體以 ArrayBuffer 儲存並相容舊 Blob；新增原檔遺失時的常駐重試／備份還原引導。
 - 窄視窗選單擴至 1100px 以下，觸控搜尋／選單按鈕為 44px；完整寬桌機保留直接工具列。
 - 原始兩份使用者 PDF／實體 Safari 26.0.1 尚未取得驗證；掃描 OCR、五張色塊自動拆分仍未提供。
-- build、20 情境跨 Chrome／WebKit 的 40 個執行個案與 diff 檢查通過；部署證據見 STATUS／交接。
+- build、20 情境跨 Chrome／WebKit 的 40 個執行個案與 diff 檢查通過；已部署既有 Site（Sites 版本 13，succeeded），來源及部署 ID 見 STATUS／交接。
 
 ## 1.6.2 — 2026-11-06
 
