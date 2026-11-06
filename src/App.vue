@@ -723,13 +723,17 @@ async function loadFile(file?: File) {
         ).importPdf(file, (message) => {
           parseMessage.value = message;
         })
-      : await importDocx(file);
+      : await importDocx(file, (message) => {
+          parseMessage.value = message;
+        });
     captureCurrent();
     shelfOpen.value = false;
     await nextTick();
     parsing.value = false;
     pendingImportMessage = candidate.pdfAssetId
-      ? "PDF 已加入書架，原始版面與檔案已保留。"
+      ? /\.docx$/i.test(file.name)
+        ? "Word 已加入書架，已保留原頁圖文位置與分頁。"
+        : "PDF 已加入書架，原始版面與檔案已保留。"
       : candidate.warnings.length
         ? "匯入完成。部分格式已簡化，可在頂部文件資訊查看提醒。"
         : "匯入完成，筆記已準備好。";
@@ -1431,7 +1435,9 @@ onBeforeUnmount(() => {
         </button>
         <p role="status">{{ storageStatus }}</p>
         <p>文件只留在你的裝置，閱讀進度會自動保存。</p>
-        <p v-if="doc?.pdfAssetId">PDF 保留原貌；文字修改請另建圖文筆記。</p>
+        <p v-if="doc?.pdfAssetId">
+          文件以原頁版面閱讀；文字修改請另建圖文筆記。
+        </p>
         <DisclosurePanel
           v-if="doc?.warnings.length"
           :label="`文件提醒（${doc.warnings.length}）`"
@@ -1540,8 +1546,8 @@ onBeforeUnmount(() => {
           <div class="import-information">
             <AppIcon name="shield" :size="18" />
             <p>
-              文件在瀏覽器內解析，不會上傳伺服器。保留標題、段落、粗體、清單、基本表格與內嵌圖片；文字方塊及複雜版面可能簡化，略過項目會另行提醒。PDF
-              請使用工具列的「匯入 PDF」。
+              文件在瀏覽器內解析，不會上傳伺服器。一般文件整理為段落；支援的固定座標圖文文件保留原頁版面。不支援的浮動圖文會提醒改用
+              PDF，不會直接拆散。PDF 請使用工具列的「匯入 PDF」。
             </p>
           </div>
           <p class="dialog-footnote">

@@ -18,6 +18,15 @@ self.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
     if (!files["word/document.xml"] || !files["[Content_Types].xml"])
       throw new Error("這不是有效的 Word .docx 文件。");
     const xml = strFromU8(files["word/document.xml"]);
+    // PDF-to-Word exports often use thousands of page-positioned text boxes.
+    // Mammoth intentionally drops layout: do not flatten these into paragraphs.
+    if (/<(?:[\w]+:)?(?:txbxContent|framePr)\b/.test(xml)) {
+      const fixedParts = unzipSync(new Uint8Array(event.data), {
+        filter: (file) => file.name.startsWith("word/"),
+      });
+      self.postMessage({ kind: "fixed", files: fixedParts });
+      return;
+    }
     const warnings: string[] = [];
     const images: { id: string; buffer: ArrayBuffer; mime: string }[] = [];
     if (/<(?:w:pict|w:object)\b/.test(xml))
@@ -65,7 +74,7 @@ self.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
       );
     if (result.value.length > 4_000_000)
       throw new Error("解析後內容過大，請拆分成較小的文件。");
-    self.postMessage({ html: result.value, warnings, images });
+    self.postMessage({ kind: "flow", html: result.value, warnings, images });
   } catch (error) {
     self.postMessage({
       error:

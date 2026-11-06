@@ -51,3 +51,5 @@
 - 考前小卡與書架同層，單卡、主題＋搜尋篩選結果卡組、滑動與結果跳轉；規則見 `docs/STUDY-CARDS.md`。標題／內容可校正，原文分段不冒充 AI 摘要。
 - `library-index.reviewCards` 與筆記共同儲存，ZIP 必須保留小卡、來源對應與圖片，舊備份缺欄位視為空。原始儲存識別不改。
 - 媒體新的 IndexedDB 紀錄使用 `data: ArrayBuffer` 避開 WebKit Blob 寫入錯誤；`getMedia` 必須繼續讀舊 Blob 並對外回傳 MediaAsset，不把內部 data 欄位帶進 ZIP。
+- Word 須區分一般段落與固定座標圖文；文字方塊不能直接攤平成段落。支援的定位版面用本機原頁閱讀，不支援則明確引導 PDF，不能假成功後丟失版面；見 `docs/WORD-IMPORT.md`。私人教材／字型不納入 repo。
+- 產品定位與競品建議保存在 `docs/PRODUCT-STRATEGY.md`，均為待驗證方向，不能當作已完成或自動擴大當輪需求。

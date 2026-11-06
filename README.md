@@ -8,7 +8,7 @@
 
 線上入口：<https://paper-between-alvis9315.javacj02004.chatgpt.site>。每輪優化完成、驗證通過後，直接同步 GitHub 並部署既有 Site；實際部署狀態與來源 commit 見 [STATUS.md](STATUS.md)。
 
-目前原始碼版本：**1.7.0**。換電腦或換 agent 時，先讀下列文件：
+目前原始碼版本：**1.7.1**。換電腦或換 agent 時，先讀下列文件：
 
 | 文件 | 用途 |
 |---|---|
@@ -16,6 +16,7 @@
 | [STATUS.md](STATUS.md) | 目前做到哪裡、正在做什麼、下一個具體動作 |
 | [docs/HANDOFF.md](docs/HANDOFF.md) | 中斷／換機時的接續步驟、程式入口與最近驗證證據 |
 | [CHANGELOG.md](CHANGELOG.md) | 每個版本已完成的變更；不把未完成項目寫成已發布 |
+| [docs/PRODUCT-STRATEGY.md](docs/PRODUCT-STRATEGY.md) | 已保留的競品、定位、黏著度與後續優化建議；尚待驗證 |
 
 最短接續指令與交班填寫格式見 [交接文件](docs/HANDOFF.md)。GitHub 保存程式與開發進度；個人筆記仍需另外匯出 ZIP 備份，換機後匯入。
 
@@ -77,7 +78,7 @@ npm run preview
 
 舊版未修改、未改名、未標記的內建示範會自動移除；已編輯或註記的筆記保留。`src/data/demo.ts` 是原先依需求手寫的示範來源，現在僅作本機測試資料，不會由網站載入或打包，並非來自使用者的 PDF。
 
-- Word 上限 10MB，保留內嵌圖片；文字方塊與複雜版面會提示略過。
+- Word 上限 10MB。一般文件保留段落與內嵌圖片；PDF 還原出的支援固定座標文件，改保留原頁圖文、字型、顏色與分頁，可搜尋／選字／註記。不支援的浮動圖文會提醒改用 PDF，不直接拆成碎段落。支援範圍見 [Word 匯入](docs/WORD-IMPORT.md)。
 - PNG/JPEG/WebP 單張原檔上限 10MB、24 百萬像素；自動縮至長邊 2000px、每張 2MB 以下。每本最多 50 張、媒體合計 50MB。
 - PDF 原貌匯入保留圖片與文字層，支援搜尋、選字、重點與放大閱讀（最高 300%）；上限 10MB、200 頁。
 - PDF 掃描頁可顯示圖片，但沒有文字層時不能搜尋或選字；尚未提供 OCR。PDF 原文不可直接改寫，請另建圖文筆記。
@@ -92,6 +93,6 @@ npm run preview
 
 第三方套件授權會在建置時彙整到 `dist/third-party-notices.txt`。
 
-`tests/reader.spec.ts`、`tests/shelf.spec.ts`、`tests/controls.spec.ts` 與 `tests/study.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF，不含私人筆記。安裝 Google Chrome 並執行 `npm exec playwright install webkit` 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
+`tests/reader.spec.ts`、`tests/shelf.spec.ts`、`tests/controls.spec.ts`、`tests/study.spec.ts` 與 `tests/word.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF／Word，不含私人筆記。安裝 Google Chrome 並執行 `npm exec playwright install webkit` 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
 
 PDF／Word 內容重組的現況、限制與後續方案見 [文件重排評估](docs/DOCUMENT-REFLOW.md)；已提供圖解＋正文重排第一階段，原貌 PDF 保留；OCR 與彩色卡片自動拆分尚未提供。

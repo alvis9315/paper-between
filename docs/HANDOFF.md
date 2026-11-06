@@ -1,10 +1,14 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.7.0**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.7.1**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-依使用者順序，先部署 1.6.2 手機修正，再實作 1.7.0 考前小卡與 PDF 重排第一階段。1.7.0 build／20 情境跨引擎 40 個執行個案／diff 檢查通過，GitHub 同步及 Sites 部署成功。
+本輪先保存產品策略到 [PRODUCT-STRATEGY.md](PRODUCT-STRATEGY.md)，再修正實際 PDF 還原 Word 的版面崩壞。1.7.1 build、23 情境 × Chrome／WebKit 共 46 個執行個案與 diff 檢查通過；正在 push／部署，下面的最新部署紀錄須補回終態。
+
+- Word：`core/docx.worker.ts` 分流一般段落／定位圖文；`core/fixedWord.ts` 用文件自己的座標、圖片及嵌入字型建立本機原頁 PDF，`importer.ts` 接回原頁閱讀。考題維持 22 頁、總複習 14 頁，可搜尋、選字、註記、放大及 ZIP。
+- 支援範圍見 [WORD-IMPORT.md](WORD-IMPORT.md)，不是通用 Word 排版引擎。遇到混合流式／不支援圖形不回退到攤平；保留舊書架並引導 PDF。舊版碎筆記沒有原 Word，須重新匯入，不自行刪除舊本。
+- `tests/word.spec.ts` 以合成 Word 驗證定位、同列字詞、原頁數、搜尋、手機、重新整理、ZIP、一般 Word 可編輯與不支援版面。新增 pdf-lib／fontkit 只在定位文件匯入時動態載入。
 
 - 小卡：`StudyCards.vue`、`core/reviewCards.ts`；與書架同層，單卡、主題＋搜尋、相關清單／跳選、滑動、編輯與來源建卡。詳見 [使用與資料規則](STUDY-CARDS.md)。
 - 重排：`ReflowDialog.vue`、`core/reflow.ts`；整組圖解保留、可校正正文／主題、區域／欄位設定、多頁佇列、另建筆記。詳見 [重排方案](DOCUMENT-REFLOW.md)。未自動拆解五張卡片，沒有 OCR。
@@ -13,7 +17,7 @@
 - 原檔遺失時 layout 會顯示持續的重試／備份還原入口，避免只剩短暫 toast 與空畫面。
 - 驗證：`tests/study.spec.ts` 已納版控，合成文件與小卡；Chrome／WebKit。後者無法在此環境 seed 舊 Blob 紀錄，舊 Blob 讀取在 Chrome 驗證，WebKit 驗證正式位元組路徑。
 
-使用者手機是 Safari 26.0.1，沒有取得原兩份 PDF，不能把 WebKit 合成測試等同實機／原檔驗收。下一步由使用者確認實機／原檔與新流程；後續擴充以具體回饋及原檔為準。
+使用者手機是 Safari 26.0.1。本輪已取得下載資料夾原兩組 PDF／Word，Chrome／WebKit 匯入成功並對照第一頁，私人檔案／字型／截圖不納入 repo 或部署。這仍不等於實體 Safari 驗收；由使用者確認重新匯入 Word、原 PDF 實機結果。
 
 ## 每輪部署方式與目前狀態
 
@@ -140,7 +144,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-1.7.0 已完成 build／40 個跨引擎執行個案／diff 檢查、GitHub 同步及部署。沒有未完成的本輪程式工作。OCR、五張色塊自動拆分未提供；實體 Safari 26.0.1 與使用者原兩份 PDF 尚待驗證。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
+1.7.1 Word 修正、策略文件、build／46 個跨引擎執行個案／diff 檢查已完成，正在 push／部署並回填結果。原 PDF／Word 已取得並跨引擎對照；實體 Safari 26.0.1 仍待確認。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei

@@ -17,7 +17,7 @@ for (const [location, pkg] of Object.entries(lock.packages)) {
   );
   for (const name of licenses)
     parts.push(
-      `\n--- ${name} ---\n${readFileSync(join(location, name), "utf8")}\n`,
+      `\n--- ${name} ---\n${readFileSync(join(location, name), "utf8").replace(/\r\n?/g, "\n").replace(/[\t ]+$/gm, "")}\n`,
     );
 }
 mkdirSync("public", { recursive: true });

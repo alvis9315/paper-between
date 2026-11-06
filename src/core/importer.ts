@@ -2,7 +2,10 @@ import { normalizeHtml } from "./normalize";
 import type { Notebook } from "./model";
 import { prepareImage, validateBookMedia } from "./media";
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
-export async function importDocx(file: File): Promise<Notebook> {
+export async function importDocx(
+  file: File,
+  progress: (message: string) => void = () => {},
+): Promise<Notebook> {
   if (!/\.docx$/i.test(file.name))
     throw new Error("目前只支援 .docx 格式，請在 Word 另存為 .docx 文件。");
   if (file.size > MAX_FILE_SIZE)
@@ -10,11 +13,15 @@ export async function importDocx(file: File): Promise<Notebook> {
   if (!file.size)
     throw new Error("這個檔案是空的，請選擇有內容的 .docx 文件。");
   const buffer = await file.arrayBuffer();
-  const parsed = await new Promise<{
-    html: string;
-    warnings: string[];
-    images: { id: string; buffer: ArrayBuffer; mime: string }[];
-  }>((resolve, reject) => {
+  const parsed = await new Promise<
+    | {
+        kind: "flow";
+        html: string;
+        warnings: string[];
+        images: { id: string; buffer: ArrayBuffer; mime: string }[];
+      }
+    | { kind: "fixed"; files: Record<string, Uint8Array> }
+  >((resolve, reject) => {
     const worker = new Worker(new URL("./docx.worker.ts", import.meta.url), {
       type: "module",
     });
@@ -34,6 +41,23 @@ export async function importDocx(file: File): Promise<Notebook> {
     };
     worker.postMessage(buffer, [buffer]);
   });
+  if (parsed.kind === "fixed") {
+    progress("正在保留 Word 的原頁圖文版面…");
+    const { fixedWordPdf } = await import("./fixedWord");
+    const bytes = await fixedWordPdf(parsed.files, progress);
+    const { importPdf } = await import("./pdf");
+    const doc = await importPdf(
+      new File([bytes], file.name.replace(/\.docx$/i, ".pdf"), {
+        type: "application/pdf",
+      }),
+      progress,
+    );
+    doc.warnings = [
+      "這份 Word 使用固定座標圖文，已在瀏覽器內建立保留原頁的閱讀版本；文字、圖片位置與原分頁保留，可搜尋、選字與畫重點。",
+      "此閱讀版本以原頁方式保存，不是一般段落筆記；需要調整內容時可另建圖文重排筆記。原始 Word 請保留在你的裝置。",
+    ];
+    return doc;
+  }
   const root = document.createElement("div");
   root.innerHTML = parsed.html;
   for (const image of parsed.images || []) {
