@@ -1,0 +1,12 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+tests/
+*.log
+.env
+.env.*
+.sites-runtime/
+.sites-checkout/
+.sites-checkout-*/
+*.tgz

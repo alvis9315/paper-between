@@ -1,0 +1,27 @@
+{
+  "name": "paper-between-notebook",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "npm run typecheck && node scripts/collect-licenses.mjs && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "vue": "3.5.44",
+    "mammoth": "1.13.0",
+    "dompurify": "3.4.17",
+    "fflate": "0.8.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.10",
+    "vite": "8.3.6",
+    "typescript": "~5.9.3",
+    "vue-tsc": "3.3.14",
+    "@playwright/test": "1.64.1",
+    "@types/node": "^22.15.0"
+  }
+}
