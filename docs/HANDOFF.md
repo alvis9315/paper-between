@@ -4,7 +4,7 @@
 
 ## 目前接續位置
 
-1.6.0 已實作：指南 top layer 限高、全站捲軸活動顯示、書架 6／12／24 分頁與我的最愛、工具列 hover、搜尋框、等距操作、觸控板翻頁及備份格式引導。build 與完整 12 個情境已通過，正在同步與部署；成功前以部署紀錄中的既有線上版為準。
+1.6.0 已實作：指南 top layer 限高、全站捲軸活動顯示、書架 6／12／24 分頁與我的最愛、工具列 hover、搜尋框、等距操作、觸控板翻頁及備份格式引導。build、完整 12 個情境及 diff 檢查已通過，GitHub 同步與 Sites 部署成功，目前沒有未完成程式工作。
 
 新增入口：`ModalShell.vue`、`CollectionPagination.vue`、`core/scrollActivity.ts`。收藏使用 `BookRecord.favorite?: boolean`，`backup.ts` 在 JSON 與 ZIP manifest 保留欄位，舊檔預設 false。測試追加到既有三個 spec（共 12 情境），全部合成資料。
 
@@ -16,7 +16,16 @@
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
 
-### 最新部署：1.5.1
+### 最新部署：1.6.0
+
+- 原始碼版本：1.6.0；Sites 版本：10。
+- 部署來源 commit：`c293e4a21fa72c0566f6d6f33c99be515eb83e20`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_6c65d56c12d8819195831629dd79df85`
+- deployment_id：`appgdep_6aedd0ddfbc8819199877ed47d4c51f1`
+- 結果：`succeeded`，2026-11-06 21:06（Asia/Taipei）。
+- 部署後的純文件 commit 只回填紀錄，真正部署程式以上述來源 commit 為準。
+
+### 先前部署：1.5.1
 
 - 原始碼版本：1.5.1；Sites 版本：9。
 - 部署來源 commit：`282fe63ef00d9ac22868218efd601cd57a74c4c8`。
@@ -97,7 +106,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-1.6.0 build、12 個情境與 diff 檢查已通過，正在同步 GitHub／部署；成功回填前不可宣稱線上更新。下一輪中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
+1.6.0 build、12 個情境與 diff 檢查已通過，已同步 GitHub 並部署成功，沒有未完成程式工作。實體 Mac 觸控板手感、Safari 與實體手機仍待使用者確認。下一輪中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei

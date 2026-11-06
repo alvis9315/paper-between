@@ -25,11 +25,11 @@ tags:
 
 ## 正在進行
 
-1.6.0 已完成建置與 12 個瀏覽器情境，正在同步 GitHub 並發布；成功前，線上版本仍以部署紀錄為準。
+1.6.0 已完成驗證、同步 GitHub 並部署成功，沒有未完成程式工作。
 
 ## 下一個明確動作
 
-推送 GitHub 並部署既有 Site；成功後回填來源 commit 與版本／部署 ID。
+換機後照交接文件 pull、`npm ci`，以 port 4112 啟動；由使用者試用實體 Mac 觸控板手感，以及新版書架／指南，依回饋調整。
 
 ## 最新驗證
 
@@ -47,7 +47,16 @@ tags:
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 
-### 最新：1.5.1
+### 最新：1.6.0
+
+- 原始碼版本：1.6.0；Sites 版本：10。
+- 部署來源 commit：`c293e4a21fa72c0566f6d6f33c99be515eb83e20`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_6c65d56c12d8819195831629dd79df85`
+- deployment_id：`appgdep_6aedd0ddfbc8819199877ed47d4c51f1`
+- 結果：`succeeded`，2026-11-06 21:06（Asia/Taipei）。
+- 部署後的純文件 commit 只回填紀錄，真正部署程式以上述來源 commit 為準。
+
+### 歷史：1.5.1
 
 - 原始碼版本：1.5.1；Sites 版本：9。
 - 部署來源 commit：`282fe63ef00d9ac22868218efd601cd57a74c4c8`。
