@@ -26,10 +26,25 @@ export async function getMedia(id: string): Promise<MediaAsset> {
           .transaction("notebook")
           .objectStore("notebook")
           .get(`media:${id}`);
-        r.onsuccess = () =>
-          r.result
-            ? resolve(r.result)
-            : reject(new Error("圖片或原始文件遺失，請重新匯入備份。"));
+        r.onsuccess = () => {
+          const value = r.result;
+          if (!value) {
+            reject(new Error("圖片或原始文件遺失，請重新匯入備份。"));
+            return;
+          }
+          // Older versions stored Blob directly. New records use stable bytes for Safari.
+          if (value.blob instanceof Blob) {
+            resolve(value);
+            return;
+          }
+          if (value.data instanceof ArrayBuffer) {
+            const { data, ...metadata } = value;
+            resolve({
+              ...metadata,
+              blob: new Blob([data], { type: metadata.mime }),
+            });
+          } else reject(new Error("圖片或原始文件資料不完整，請從備份還原。"));
+        };
         r.onerror = () => reject(r.error);
       });
     } finally {
@@ -195,8 +210,8 @@ export async function storageUsage(): Promise<string> {
     return "無法取得瀏覽器容量";
   }
 }
-export function cleanupPending(documents: Notebook[]) {
-  const used = new Set(documents.flatMap(mediaIds));
+export function cleanupPending(documents: Notebook[], extraIds: string[] = []) {
+  const used = new Set([...documents.flatMap(mediaIds), ...extraIds]);
   for (const id of pendingMedia.keys())
     if (!used.has(id)) {
       pendingMedia.delete(id);

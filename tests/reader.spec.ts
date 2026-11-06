@@ -437,8 +437,9 @@ test("PDF canvas survives selection-layer failure and repeated mobile resizes", 
   );
   for (const width of [390, 400, 320, 430])
     await page.setViewportSize({ width, height: 844 });
+  await expect(page.locator(".book-shell")).toHaveClass(/single/);
   await expect(
-    page.locator(".book-pages > .paper .pdf-text-warning"),
+    page.locator(".book-pages > .paper .pdf-text-warning").first(),
   ).toBeVisible();
   await expect(page.locator(".pdf-error")).toHaveCount(0);
   const painted = await page
@@ -458,4 +459,95 @@ test("PDF canvas survives selection-layer failure and repeated mobile resizes", 
   );
   await expect(page.locator(".book-pages > .paper .pdf-status")).toHaveCount(0);
   await expect(page.locator(".pdf-text-warning")).toHaveCount(0);
+});
+
+test("missing PDF media shows recovery controls and legacy Blob records can be read after retry", async ({
+  page,
+  browserName,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("main.bookshelf-page")).toBeVisible();
+  await page.locator("#pdf-file").setInputFiles({
+    name: "recover.pdf",
+    mimeType: "application/pdf",
+    buffer: pdfFixture(),
+  });
+  await expect(page.locator(".book-workspace")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        const path = "/src/core/storage.ts";
+        const { loadLibrary } = await import(path);
+        return (await loadLibrary()).books.length;
+      }),
+    )
+    .toBe(1);
+  const original = await page.evaluate(async () => {
+    const a = "/src/core/storage.ts",
+      b = "/src/core/media.ts",
+      c = "/src/core/database.ts";
+    const { loadLibrary } = await import(a),
+      { getMedia } = await import(b),
+      { database } = await import(c);
+    const book = (await loadLibrary()).books[0];
+    const asset = await getMedia(book.document.pdfAssetId);
+    const { blob, ...metadata } = asset;
+    const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
+    const db = await database();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("notebook", "readwrite");
+      tx.objectStore("notebook").delete(`media:${asset.id}`);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+    return { metadata, bytes };
+  });
+  await page.reload();
+  await expect(page.locator(".reader-recovery")).toContainText("暫時無法載入");
+  await expect(
+    page.getByRole("button", { name: "重試載入筆記", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "從備份還原", exact: true }),
+  ).toBeVisible();
+  await page.evaluate(
+    async ({ metadata, bytes, legacy }) => {
+      const path = "/src/core/database.ts";
+      const { database } = await import(path);
+      const db = await database();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction("notebook", "readwrite");
+        tx.objectStore("notebook").put(
+          {
+            ...metadata,
+            ...(legacy
+              ? {
+                  blob: new Blob([new Uint8Array(bytes)], {
+                    type: metadata.mime,
+                  }),
+                }
+              : { data: new Uint8Array(bytes).buffer }),
+          },
+          `media:${metadata.id}`,
+        );
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    },
+    { ...original, legacy: browserName !== "webkit" },
+  );
+  await page.getByRole("button", { name: "重試載入筆記", exact: true }).click();
+  await expect(page.locator(".reader-recovery")).toHaveCount(0);
+  await expect(page.locator(".pdf-status")).toHaveCount(0);
+  expect(
+    await page
+      .locator(".book-pages > .paper canvas")
+      .first()
+      .evaluate((el: HTMLCanvasElement) => el.width),
+  ).toBeGreaterThan(100);
 });

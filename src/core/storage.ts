@@ -1,4 +1,4 @@
-﻿import type { BookRecord, LibraryState, SavedState } from "./model";
+﻿import type { BookRecord, LibraryState, SavedState, ReviewCard } from "./model";
 import { createRecord } from "./library";
 import { database } from "./database";
 import { mediaIds, pendingMedia } from "./media";
@@ -28,7 +28,7 @@ export async function loadLibrary(): Promise<LibraryState> {
         req.onerror = () => reject(req.error);
         req.onsuccess = () => {
           const index = req.result as
-            | { ids: string[]; activeId?: string }
+            | { ids: string[]; activeId?: string; reviewCards?: ReviewCard[] }
             | undefined;
           if (!index) {
             resolve(undefined);
@@ -36,7 +36,11 @@ export async function loadLibrary(): Promise<LibraryState> {
           }
           const books: BookRecord[] = [];
           if (!index.ids.length) {
-            resolve({ books, activeId: index.activeId });
+            resolve({
+              books,
+              activeId: index.activeId,
+              reviewCards: index.reviewCards || [],
+            });
             return;
           }
           let remaining = index.ids.length;
@@ -46,7 +50,11 @@ export async function loadLibrary(): Promise<LibraryState> {
             request.onsuccess = () => {
               if (request.result) books.push(request.result);
               if (--remaining === 0)
-                resolve({ books, activeId: index.activeId });
+                resolve({
+                  books,
+                  activeId: index.activeId,
+                  reviewCards: index.reviewCards || [],
+                });
             };
           }
         };
@@ -88,6 +96,22 @@ export async function saveLibrary(
   changedIds?: string[],
   removedIds: string[] = [],
 ): Promise<void> {
+  const mediaInUse = new Set([
+    ...state.books.flatMap((b) => mediaIds(b.document)),
+    ...(state.reviewCards || []).flatMap((c) =>
+      c.image ? [c.image.mediaId] : [],
+    ),
+  ]);
+  // Materialize bytes before opening the transaction. WebKit can reject canvas-backed
+  // Blob/File records with "Error preparing Blob/File data"; ArrayBuffer is stable.
+  const assetsToWrite = await Promise.all(
+    [...pendingMedia]
+      .filter(([id]) => mediaInUse.has(id))
+      .map(async ([id, asset]) => {
+        const { blob, ...metadata } = asset;
+        return [id, { ...metadata, data: await blob.arrayBuffer() }] as const;
+      }),
+  );
   const db = await database();
   try {
     await new Promise<void>((resolve, reject) => {
@@ -96,7 +120,7 @@ export async function saveLibrary(
       const writtenMedia: string[] = [];
       try {
         removedIds.forEach((id) => store.delete(`book:${id}`));
-        const ids = new Set(state.books.flatMap((b) => mediaIds(b.document)));
+        const ids = mediaInUse;
         // Atomic with the snapshot; copies and trash retain their shared assets.
         const cursor = store.openCursor(
           IDBKeyRange.bound("media:", "media:\uffff"),
@@ -107,17 +131,17 @@ export async function saveLibrary(
           if (!ids.has(String(item.key).slice(6))) item.delete();
           item.continue();
         };
-        for (const [id, asset] of pendingMedia)
-          if (ids.has(id)) {
-            store.put(asset, `media:${id}`);
-            writtenMedia.push(id);
-          }
+        for (const [id, asset] of assetsToWrite) {
+          store.put(asset, `media:${id}`);
+          writtenMedia.push(id);
+        }
         for (const book of state.books)
           if (!changedIds || changedIds.includes(book.document.id))
             store.put(structuredClone(book), `book:${book.document.id}`);
         store.put(
           {
             version: 1,
+            reviewCards: structuredClone(state.reviewCards || []),
             ids: state.books.map((b) => b.document.id),
             activeId: state.activeId,
           },
@@ -143,8 +167,13 @@ export async function saveLibrary(
         writtenMedia.forEach((id) => pendingMedia.delete(id));
         resolve();
       };
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error);
+      tx.onerror = (event) =>
+        reject(
+          (event.target as IDBRequest).error ||
+            tx.error ||
+            new Error("本機資料寫入失敗。"),
+        );
+      tx.onabort = () => reject(tx.error || new Error("本機資料交易已中止。"));
     });
   } finally {
     db.close();

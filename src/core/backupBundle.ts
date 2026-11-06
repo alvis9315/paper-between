@@ -7,13 +7,18 @@ import {
   stageAsset,
   validateBookMedia,
 } from "./media";
-import type { BookRecord, MediaAsset } from "./model";
+import type { BookRecord, MediaAsset, ReviewCard } from "./model";
 import { validateAnnotations } from "./annotations";
+import { restoreReviewCards } from "./reviewCards";
 import { theme } from "./theme";
 export type RestoredBooks = BookRecord[] & {
+  reviewCards?: ReviewCard[];
   settings?: { theme?: "light" | "dark" };
 };
-export async function createBundle(books: BookRecord[]): Promise<Blob> {
+export async function createBundle(
+  books: BookRecord[],
+  reviewCards: ReviewCard[] = [],
+): Promise<Blob> {
   const characters = books.reduce(
     (n, b) => n + b.document.blocks.reduce((m, x) => m + x.html.length, 0),
     0,
@@ -24,7 +29,10 @@ export async function createBundle(books: BookRecord[]): Promise<Blob> {
   const files: Record<string, Uint8Array> = {};
   const assets = [];
   let total = 0;
-  for (const id of new Set(books.flatMap((b) => mediaIds(b.document)))) {
+  for (const id of new Set([
+    ...books.flatMap((b) => mediaIds(b.document)),
+    ...reviewCards.flatMap((c) => (c.image ? [c.image.mediaId] : [])),
+  ])) {
     const asset = await getMedia(id);
     total += asset.bytes;
     if (total > 100 * 1024 * 1024)
@@ -49,6 +57,7 @@ export async function createBundle(books: BookRecord[]): Promise<Blob> {
       format: "paper-between-bundle",
       version: 2,
       books: records,
+      reviewCards,
       assets,
       settings: { theme: theme.value, imageMaxEdge: 2000 },
     }),
@@ -68,7 +77,23 @@ export async function createBundle(books: BookRecord[]): Promise<Blob> {
 export async function readBundle(file: File): Promise<RestoredBooks> {
   if (file.size > 110 * 1024 * 1024)
     throw new Error("備份超過 110MB，請選擇較小的頁白備份。");
-  if (/\.json$/i.test(file.name)) return importBackup(await file.text());
+  if (/\.json$/i.test(file.name)) {
+    const text = await file.text();
+    const books = importBackup(text) as RestoredBooks;
+    const metadata = JSON.parse(text);
+    books.reviewCards = restoreReviewCards(
+      metadata.reviewCards,
+      new Map(
+        metadata.books.map((b: any, i: number) => [
+          b.sourceId,
+          books[i]!.document.id,
+        ]),
+      ),
+    );
+    if (books.reviewCards.some((c) => c.image))
+      throw new Error("含圖片的小卡請匯入完整 ZIP。");
+    return books;
+  }
   let total = 0;
   let files: Record<string, Uint8Array>;
   try {
@@ -93,17 +118,22 @@ export async function readBundle(file: File): Promise<RestoredBooks> {
   if (
     manifest.format !== "paper-between-bundle" ||
     manifest.version !== 2 ||
+    !Array.isArray(manifest.books) ||
+    manifest.books.length > 500 ||
+    (!manifest.books.length && !manifest.reviewCards?.length) ||
     !Array.isArray(manifest.assets) ||
     manifest.assets.length > 10000
   )
     throw new Error("這不是支援的頁白完整備份。");
-  const books = importBackup(
-    JSON.stringify({
-      format: "paper-between-bookshelf",
-      version: 1,
-      books: manifest.books,
-    }),
-  );
+  const books = manifest.books.length
+    ? importBackup(
+        JSON.stringify({
+          format: "paper-between-bookshelf",
+          version: 1,
+          books: manifest.books,
+        }),
+      )
+    : [];
   const staged: MediaAsset[] = [];
   books.forEach((book, i) => {
     const record = manifest.books[i];
@@ -268,8 +298,24 @@ export async function readBundle(file: File): Promise<RestoredBooks> {
     )
       throw new Error("備份中的單本圖片超過限制。");
   }
+  const reviewCards = restoreReviewCards(
+    manifest.reviewCards,
+    new Map(
+      manifest.books.map((b: any, i: number) => [
+        b.sourceId,
+        books[i]!.document.id,
+      ]),
+    ),
+  );
+  if (
+    reviewCards.some(
+      (c) => c.image && available.get(c.image.mediaId)?.kind !== "image",
+    )
+  )
+    throw new Error("備份缺少小卡圖片。");
   for (const asset of staged) pendingMedia.set(asset.id, asset);
   const restored = books as RestoredBooks;
+  restored.reviewCards = reviewCards;
   if (
     manifest.settings?.theme === "light" ||
     manifest.settings?.theme === "dark"

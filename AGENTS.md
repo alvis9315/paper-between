@@ -47,4 +47,7 @@
 
 上述交接要求在收到暫停／換模型／換裝置要求時也適用；緊急終止前來不及完成的部分，下次接手先比對 Git diff。
 
-- PDF／Word 智慧重排是評估階段，見 `docs/DOCUMENT-REFLOW.md`；不可把現有 PDF 原貌繪製描述為已完成語意重組。
+- PDF 已提供圖解＋正文的可校正重排第一階段，另建筆記並保留原檔／註記；OCR、色塊自動拆解仍未提供，見 `docs/DOCUMENT-REFLOW.md`。
+- 考前小卡與書架同層，單卡、主題＋搜尋篩選結果卡組、滑動與結果跳轉；規則見 `docs/STUDY-CARDS.md`。標題／內容可校正，原文分段不冒充 AI 摘要。
+- `library-index.reviewCards` 與筆記共同儲存，ZIP 必須保留小卡、來源對應與圖片，舊備份缺欄位視為空。原始儲存識別不改。
+- 媒體新的 IndexedDB 紀錄使用 `data: ArrayBuffer` 避開 WebKit Blob 寫入錯誤；`getMedia` 必須繼續讀舊 Blob 並對外回傳 MediaAsset，不把內部 data 欄位帶進 ZIP。

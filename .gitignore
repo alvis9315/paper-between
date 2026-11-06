@@ -6,6 +6,7 @@ tests/*
 !tests/reader.spec.ts
 !tests/shelf.spec.ts
 !tests/controls.spec.ts
+!tests/study.spec.ts
 *.log
 .env
 .env.*

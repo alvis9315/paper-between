@@ -45,7 +45,7 @@ test("shelf navigation stays on shelf; views persist and all list actions work",
   page.on("pageerror", (e) => errors.push(e.message));
   await shelf(page);
   await expect(
-    page.getByRole("button", { name: "我的書架", exact: true }),
+    page.locator('.site-header [aria-label="我的書架"]'),
   ).toHaveCount(0);
   await expect(page.locator(".shelf-indicator")).toHaveCount(0);
   await page.getByRole("link", { name: "頁白首頁" }).click();

@@ -20,6 +20,7 @@ const props = defineProps<{
   books: BookRecord[];
   activeId?: string;
   busy: boolean;
+  hasCards?: boolean;
 }>();
 const emit = defineEmits<{
   open: [id: string];
@@ -196,7 +197,7 @@ function rename(id: string) {
         <div class="shelf-backup-actions">
           <button
             class="toolbar-button"
-            :disabled="busy || !books.length"
+            :disabled="busy || (!books.length && !hasCards)"
             @click="emit('backup')"
           >
             <AppIcon name="download" :size="16" />備份書架</button

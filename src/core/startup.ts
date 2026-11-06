@@ -47,5 +47,5 @@ export async function withoutBundledDemo(
   )
     ? state.activeId
     : books.find((b) => !b.deletedAt)?.document.id;
-  return { state: { books, activeId }, removedIds };
+  return { state: { ...state, books, activeId }, removedIds };
 }

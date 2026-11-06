@@ -55,8 +55,21 @@ export interface BookRecord extends SavedState {
   favorite?: boolean;
   progress: number;
 }
+export interface ReviewCard {
+  id: string;
+  title: string;
+  body: string;
+  tags: string[];
+  sourceBookId?: string;
+  sourceTitle: string;
+  sourceKey?: string;
+  image?: ImageReference;
+  createdAt: number;
+  updatedAt: number;
+}
 export interface LibraryState {
   books: BookRecord[];
+  reviewCards?: ReviewCard[];
   activeId?: string;
   storageWarning?: string;
 }

@@ -8,7 +8,7 @@
 
 線上入口：<https://paper-between-alvis9315.javacj02004.chatgpt.site>。每輪優化完成、驗證通過後，直接同步 GitHub 並部署既有 Site；實際部署狀態與來源 commit 見 [STATUS.md](STATUS.md)。
 
-目前原始碼版本：**1.6.2**。換電腦或換 agent 時，先讀下列文件：
+目前原始碼版本：**1.7.0**。換電腦或換 agent 時，先讀下列文件：
 
 | 文件 | 用途 |
 |---|---|
@@ -22,6 +22,9 @@
 ## 功能
 
 - 首次使用為空白書架，自行匯入 PDF、Word 或書架備份，也可新增圖文／貼上文字；不預載任何範例或私人文件。
+- 考前小卡與書架同層：單卡閱讀、手機滑動、主題標籤、全文搜尋、相關結果清單與跳轉。可自建、從筆記／重點建立或直接匯入 PDF／Word，支援編輯與 ZIP 搬移，見 [小卡說明](docs/STUDY-CARDS.md)。
+- PDF 工具列「圖文重排」可選上圖下文／左圖右文／全文，調整圖解區域及欄位順序、校正文字與主題，另建圖文筆記後自動分頁，原檔保留。
+- 手機頂部保留搜尋，其他操作收進有文字的選單；桌機維持直接操作。手機輸入字級至少 16px，避免 Safari 聚焦時自動放大，保留手動縮放。
 - 多本書架：新增、切換、重新命名、複製、我的最愛、回收桶與還原。點書卡／條列的星星即可收藏。
 - 書架可切換卡片／條列並記住顯示偏好；卡片移入時輕抬與傾斜，支援減少動態效果設定。點左上「頁白」回書架，返回筆記請按「回到閱讀」。
 - 書架搜尋有獨立邊框；每頁可選 6／12／24 本（預設 12），超過設定才顯示分頁、首末頁與跳頁。切換篩選會回到第一頁，顯示數量記在目前瀏覽器。
@@ -89,6 +92,6 @@ npm run preview
 
 第三方套件授權會在建置時彙整到 `dist/third-party-notices.txt`。
 
-`tests/reader.spec.ts`、`tests/shelf.spec.ts` 與 `tests/controls.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF，不含私人筆記。安裝 Google Chrome 並執行 `npm exec playwright install webkit` 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
+`tests/reader.spec.ts`、`tests/shelf.spec.ts`、`tests/controls.spec.ts` 與 `tests/study.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF，不含私人筆記。安裝 Google Chrome 並執行 `npm exec playwright install webkit` 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
 
-PDF／Word 內容重組的現況、限制與後續方案見 [文件重排評估](docs/DOCUMENT-REFLOW.md)；目前 PDF 仍為原貌閱讀，尚未提供智慧重排。
+PDF／Word 內容重組的現況、限制與後續方案見 [文件重排評估](docs/DOCUMENT-REFLOW.md)；已提供圖解＋正文重排第一階段，原貌 PDF 保留；OCR 與彩色卡片自動拆分尚未提供。

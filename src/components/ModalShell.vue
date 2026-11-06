@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import AppIcon from "./AppIcon.vue";
-const props = defineProps<{ title: string; busy?: boolean }>();
+const props = defineProps<{ title: string; busy?: boolean; wide?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 const dialog = ref<HTMLDialogElement>();
 function close() {
@@ -13,6 +13,7 @@ onMounted(() => dialog.value?.showModal());
   <dialog
     ref="dialog"
     class="bounded-modal"
+    :class="{ wide }"
     :aria-label="title"
     @cancel.prevent="close"
     @click="$event.target === dialog && close()"
@@ -47,6 +48,9 @@ onMounted(() => dialog.value?.showModal());
   color: var(--ink);
   overflow: hidden;
   box-shadow: 0 18px 70px #17120e40;
+}
+.bounded-modal.wide {
+  width: min(1040px, calc(100vw - 32px));
 }
 .bounded-modal[open] {
   display: flex;

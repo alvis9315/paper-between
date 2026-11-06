@@ -1,14 +1,19 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.6.2**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.7.0**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-使用者要求先修手機搜尋放大、PDF 白頁、工具列／書架高佔位，再做 PDF 重排與考前小卡。1.6.2 build 與 28 個 Chrome／WebKit 執行個案已通過，已部署成功，開始重排與小卡。手機為 Safari 26.0.1；沒有原始兩份 PDF，未重現個別檔案根因。
+依使用者順序，先部署 1.6.2 手機修正，再實作 1.7.0 考前小卡與 PDF 重排第一階段。1.7.0 build／20 情境跨引擎 40 個執行個案／diff 檢查通過，正在推送與部署；尚未成功前線上仍為下方 1.6.2。
 
-PDF 改 legacy build／worker、低畫布預算、繪圖排隊，選字層可獨立失敗；錯誤保留診斷、重試與原檔。手機搜尋至少 16px 且依 visualViewport／dvh 限高，不禁用 pinch zoom；手機選單用有主題樣式的 Popover，搜尋留外。WebKit 自訂選單加明確 focus。
+- 小卡：`StudyCards.vue`、`core/reviewCards.ts`；與書架同層，單卡、主題＋搜尋、相關清單／跳選、滑動、編輯與來源建卡。詳見 [使用與資料規則](STUDY-CARDS.md)。
+- 重排：`ReflowDialog.vue`、`core/reflow.ts`；整組圖解保留、可校正正文／主題、區域／欄位設定、多頁佇列、另建筆記。詳見 [重排方案](DOCUMENT-REFLOW.md)。未自動拆解五張卡片，沒有 OCR。
+- 資料：`LibraryState.reviewCards` 為可選欄位；索引共同保存、ZIP 帶小卡／媒體／來源對應、純小卡 ZIP 允許零書本。備份驗證完才加入。
+- WebKit 已重現 Blob 寫入 UnknownError。`storage.ts` 在交易前把媒體轉 ArrayBuffer，`media.ts` 讀舊 Blob 或新 data 並對外仍回傳 Blob。新寫入不再依賴 Blob 落盤；不要把內部 data 帶進 ZIP。
+- 原檔遺失時 layout 會顯示持續的重試／備份還原入口，避免只剩短暫 toast 與空畫面。
+- 驗證：`tests/study.spec.ts` 已納版控，合成文件與小卡；Chrome／WebKit。後者無法在此環境 seed 舊 Blob 紀錄，舊 Blob 讀取在 Chrome 驗證，WebKit 驗證正式位元組路徑。
 
-接續：先讓 build 與 Chrome／WebKit 28 個執行個案通過並部署 1.6.2，再實作 [文件重排第一階段](DOCUMENT-REFLOW.md)（圖解保留＋正文可重排、另建筆記）與獨立小卡（單卡滑動、主題標籤、搜尋結果卡組與快速跳轉、可校正標題／主題）。
+使用者手機是 Safari 26.0.1，沒有取得原兩份 PDF，不能把 WebKit 合成測試等同實機／原檔驗收。接續動作是完整 build／40 個執行個案通過後部署，再填實際結果；如中斷照下方格式更新。
 
 ## 每輪部署方式與目前狀態
 

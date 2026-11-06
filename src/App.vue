@@ -29,12 +29,22 @@ import {
   Sun,
   Moon,
   Menu,
+  Layers,
+  ScanText,
 } from "@lucide/vue";
 import { theme, toggleTheme, restoreTheme } from "./core/theme";
 import BookView from "./components/BookView.vue";
 import PaginationBar from "./components/PaginationBar.vue";
 import TextEntryDialog from "./components/TextEntryDialog.vue";
 import Bookshelf from "./components/Bookshelf.vue";
+import { cardsFromBook, MAX_REVIEW_CARDS } from "./core/reviewCards";
+const ReflowDialog = defineAsyncComponent(
+  () => import("./components/ReflowDialog.vue"),
+);
+const reflowOpen = ref(false);
+const StudyCards = defineAsyncComponent(
+  () => import("./components/StudyCards.vue"),
+);
 const NotebookEditor = defineAsyncComponent(
   () => import("./components/NotebookEditor.vue"),
 );
@@ -67,6 +77,7 @@ import type {
   BookRecord,
   Annotation,
   AnnotationTarget,
+  ReviewCard,
 } from "./core/model";
 
 const doc = shallowRef<Notebook>();
@@ -86,11 +97,11 @@ const detailPage = ref<number>();
 const infoOpen = ref(false);
 const importOpen = ref(false);
 const helpOpen = ref(false);
-const compactTools = ref(window.innerWidth < 820);
+const compactTools = ref(window.innerWidth < 1100);
 const readerTools = ref<HTMLElement>();
 const readerMenuOpen = ref(false);
 function viewportChanged() {
-  compactTools.value = window.innerWidth < 820;
+  compactTools.value = window.innerWidth < 1100;
   const viewport = window.visualViewport;
   if (!viewport || Math.abs(viewport.scale - 1) < 0.01) {
     document.documentElement.style.setProperty(
@@ -109,6 +120,62 @@ const backupError = ref("");
 const backupFileName = ref("");
 const textOpen = ref(false);
 const shelfOpen = ref(false);
+const libraryView = ref<"books" | "cards">("books");
+const reviewCards = shallowRef<ReviewCard[]>([]);
+const cardImport = ref(false);
+function showCards() {
+  if (busy.value || turning.value) return;
+  readerMenuOpen.value = false;
+  if (!toastError.value) toast.value = "";
+  captureCurrent();
+  queueSave();
+  libraryView.value = "cards";
+  shelfOpen.value = true;
+}
+function addReviewCards(cards: ReviewCard[]) {
+  const keys = new Set(
+    reviewCards.value.map((c) => c.sourceKey).filter(Boolean),
+  );
+  const fresh = cards.filter((c) => {
+    if (!c.sourceKey) return true;
+    if (keys.has(c.sourceKey)) return false;
+    keys.add(c.sourceKey);
+    return true;
+  });
+  if (reviewCards.value.length + fresh.length > MAX_REVIEW_CARDS) {
+    notify("小卡上限 2000 張，請先整理。", true);
+    return;
+  }
+  reviewCards.value = [...reviewCards.value, ...fresh];
+  queueSave();
+  if (libraryView.value === "cards" && fresh.length) {
+    toast.value = "";
+    return;
+  }
+  notify(
+    fresh.length
+      ? `已建立 ${fresh.length} 張小卡，內容可再校正。`
+      : "沒有新增小卡：來源已建立過，或沒有可讀取的文字。",
+  );
+}
+function saveReviewCard(card: ReviewCard) {
+  if (!reviewCards.value.some((c) => c.id === card.id)) addReviewCards([card]);
+  else {
+    reviewCards.value = reviewCards.value.map((c) =>
+      c.id === card.id ? card : c,
+    );
+    queueSave();
+  }
+}
+function removeReviewCard(id: string) {
+  reviewCards.value = reviewCards.value.filter((c) => c.id !== id);
+  queueSave();
+}
+function importForCards(kind: "pdf" | "word") {
+  cardImport.value = true;
+  (kind === "pdf" ? pdfInput.value : fileInput.value)?.click();
+}
+
 const editorOpen = ref(false);
 const richNew = ref(false);
 const highlightOpen = ref(false);
@@ -127,6 +194,7 @@ const activeResult = ref(0);
 const resultLimit = ref(60);
 const progress = ref(0);
 const layingOut = ref(true);
+const layoutError = ref("");
 const parsing = ref(false);
 const turning = ref(false);
 const toast = ref("");
@@ -192,6 +260,7 @@ async function layout(candidate?: Notebook, anchor?: Anchor) {
   const position =
     anchor || currentAnchor || anchorForPage(pages.value, index.value);
   layingOut.value = true;
+  layoutError.value = "";
   progress.value = 0;
   try {
     await validateBookMedia(source);
@@ -249,6 +318,8 @@ async function layout(candidate?: Notebook, anchor?: Anchor) {
     pendingDocument = undefined;
     pendingImportMessage = undefined;
     layingOut.value = false;
+    layoutError.value =
+      error instanceof Error ? error.message : "筆記載入失敗。";
     notify(
       error instanceof Error ? error.message : "排版失敗，請稍後再試。",
       true,
@@ -264,7 +335,13 @@ function queueSave() {
     try {
       await persist();
       if (version === savedVersion) storageStatus.value = "已儲存於此瀏覽器";
-    } catch {
+    } catch (error) {
+      console.warn(
+        "Local save failed",
+        error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : String(error),
+      );
       storageStatus.value = "此瀏覽器無法儲存";
       notify(
         "瀏覽器儲存失敗，這次內容與閱讀位置無法保存；仍可繼續閱讀。",
@@ -291,7 +368,11 @@ function captureCurrent() {
   dirtyIds.add(record.document.id);
 }
 async function persist() {
-  const snapshot = { books: books.value, activeId: activeId.value };
+  const snapshot = {
+    books: books.value,
+    activeId: activeId.value,
+    reviewCards: reviewCards.value,
+  };
   const ids = [...dirtyIds];
   const version = savedVersion;
   const job = saveChain.catch(() => {}).then(() => saveLibrary(snapshot, ids));
@@ -301,8 +382,10 @@ async function persist() {
 }
 function showShelf() {
   if (busy.value || turning.value) return;
+  readerMenuOpen.value = false;
   captureCurrent();
   queueSave();
+  libraryView.value = "books";
   shelfOpen.value = true;
 }
 function returnToReading() {
@@ -375,7 +458,12 @@ async function downloadBackup(id?: string) {
     const selected = id
       ? books.value.filter((b) => b.document.id === id)
       : books.value;
-    const data = await createBundle(selected);
+    const data = await createBundle(
+      selected,
+      id
+        ? reviewCards.value.filter((c) => c.sourceBookId === id)
+        : reviewCards.value,
+    );
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
     a.href = url;
@@ -427,12 +515,20 @@ async function restoreBackup(file: File) {
       throw new Error(`這個檔案不是書架備份。${hint}`);
     }
     const restored = await readBundle(file);
+    if (
+      reviewCards.value.length + (restored.reviewCards?.length || 0) >
+      MAX_REVIEW_CARDS
+    )
+      throw new Error("匯入後小卡會超過 2000 張，請先整理。");
     books.value = [...books.value, ...restored];
+    reviewCards.value = [...reviewCards.value, ...(restored.reviewCards || [])];
     restored.forEach((b) => dirtyIds.add(b.document.id));
     queueSave();
     restoreTheme(restored.settings?.theme);
     backupImportOpen.value = false;
-    notify(`已加入 ${restored.length} 本備份筆記，原有書架完整保留。`);
+    notify(
+      `已加入 ${restored.length} 本筆記、${restored.reviewCards?.length || 0} 張小卡，原有資料完整保留。`,
+    );
   } catch (e) {
     backupError.value =
       e instanceof Error
@@ -615,6 +711,8 @@ function scheduleResize() {
 }
 async function loadFile(file?: File) {
   if (!file || busy.value || turning.value) return;
+  const asCards = cardImport.value;
+  cardImport.value = false;
   parsing.value = true;
   importOpen.value = false;
   try {
@@ -636,6 +734,12 @@ async function loadFile(file?: File) {
         ? "匯入完成。部分格式已簡化，可在頂部文件資訊查看提醒。"
         : "匯入完成，筆記已準備好。";
     await layout(candidate);
+    if (asCards) {
+      const record = books.value.find((b) => b.document.id === candidate.id);
+      if (record) addReviewCards(cardsFromBook(record));
+      libraryView.value = "cards";
+      shelfOpen.value = true;
+    }
   } catch (error) {
     parsing.value = false;
     notify(
@@ -825,6 +929,7 @@ onMounted(async () => {
     const library = await loadLibrary();
     if (library.storageWarning) notify(library.storageWarning, true);
     books.value = library.books;
+    reviewCards.value = library.reviewCards || [];
     activeId.value = library.activeId;
     library.books.forEach((b) => dirtyIds.add(b.document.id));
     const saved =
@@ -871,7 +976,10 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="app"
-    :class="{ 'reading-mode': !shelfOpen }"
+    :class="{
+      'reading-mode': !shelfOpen,
+      'study-mode': shelfOpen && libraryView === 'cards',
+    }"
     @dragover.prevent="
       dragOver =
         !editorOpen &&
@@ -999,6 +1107,19 @@ onBeforeUnmount(() => {
           />
           <IconAction
             compact
+            :icon="ScanText"
+            label="圖文重排"
+            :disabled="busy || turning || !doc?.pdfAssetId"
+            @click="reflowOpen = true"
+          />
+          <IconAction
+            compact
+            :icon="Layers"
+            label="考前小卡"
+            @click="showCards"
+          />
+          <IconAction
+            compact
             :icon="CircleHelp"
             label="閱讀指南"
             @click="helpOpen = true"
@@ -1023,9 +1144,35 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </header>
-    <Bookshelf
-      v-if="shelfOpen"
+    <nav v-if="shelfOpen" class="library-nav" aria-label="資料區塊">
+      <button
+        :aria-current="libraryView === 'books' ? 'page' : undefined"
+        @click="showShelf"
+      >
+        我的書架
+      </button>
+      <button
+        :aria-current="libraryView === 'cards' ? 'page' : undefined"
+        @click="showCards"
+      >
+        考前小卡 <span>{{ reviewCards.length }}</span>
+      </button>
+    </nav>
+    <StudyCards
+      v-if="shelfOpen && libraryView === 'cards'"
+      :cards="reviewCards"
       :books="books"
+      :busy="busy || backupWorking"
+      @add="addReviewCards"
+      @save="saveReviewCard"
+      @remove="removeReviewCard"
+      @source="openBook"
+      @import="importForCards"
+    />
+    <Bookshelf
+      v-if="shelfOpen && libraryView === 'books'"
+      :books="books"
+      :has-cards="!!reviewCards.length"
       :active-id="activeId"
       :busy="busy || backupWorking"
       @open="openBook"
@@ -1063,6 +1210,7 @@ onBeforeUnmount(() => {
         type="file"
         accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         aria-label="選擇 Word 文件"
+        @cancel="cardImport = false"
         @change="pickFile"
       />
       <input
@@ -1072,6 +1220,7 @@ onBeforeUnmount(() => {
         type="file"
         accept=".pdf,application/pdf"
         aria-label="選擇 PDF 文件"
+        @cancel="cardImport = false"
         @change="pickFile"
       />
       <dialog
@@ -1195,7 +1344,23 @@ onBeforeUnmount(() => {
           @change="changed"
           @turning="setTurning"
         />
-        <div v-else class="initial-paper"></div>
+        <div v-else class="initial-paper">
+          <div v-if="layoutError" class="reader-recovery" role="alert">
+            <AppIcon name="file" :size="32" />
+            <h2>這本筆記暫時無法載入</h2>
+            <p>{{ layoutError }}</p>
+            <p>筆記紀錄未刪除。可以重試，或從原始檔／ZIP 備份還原。</p>
+            <div>
+              <button class="toolbar-button" @click="layout()">
+                重試載入筆記</button
+              ><button class="toolbar-button" @click="openBackupImport">
+                從備份還原</button
+              ><button class="toolbar-button" @click="showShelf">
+                回到書架
+              </button>
+            </div>
+          </div>
+        </div>
         <div v-if="busy" class="loading-overlay" role="status">
           <span class="loading-book"><AppIcon name="book" :size="30" /></span
           ><strong>{{ parsing ? parseMessage : "正在整理紙頁…" }}</strong
@@ -1302,7 +1467,10 @@ onBeforeUnmount(() => {
       :document="richNew ? undefined : doc"
       @close="
         editorOpen = false;
-        cleanupPending(books.map((b) => b.document));
+        cleanupPending(
+          books.map((b) => b.document),
+          reviewCards.flatMap((c) => (c.image ? [c.image.mediaId] : [])),
+        );
       "
       @save="saveEdited"
     />
@@ -1382,6 +1550,16 @@ onBeforeUnmount(() => {
         >
       </section>
     </div>
+    <ReflowDialog
+      v-if="reflowOpen && doc?.pdfAssetId"
+      :document="doc"
+      :start-page="pages[index]?.fragments[0]?.pdf?.page || 1"
+      @close="reflowOpen = false"
+      @create="
+        reflowOpen = false;
+        createTextNotebook($event);
+      "
+    />
     <ModalShell v-if="helpOpen" title="閱讀指南" @close="helpOpen = false">
       <p>書頁依螢幕自動排版，把空間留給閱讀。</p>
       <h3>翻頁與細節</h3>
@@ -1434,7 +1612,9 @@ onBeforeUnmount(() => {
         直接選擇頁白匯出的 <strong>ZIP 備份</strong>，不需要解壓縮。也可匯入舊版
         JSON。
       </p>
-      <p>筆記、圖片、PDF、重點及我的最愛會加入這個書架，原有筆記會保留。</p>
+      <p>
+        筆記、圖片、PDF、重點、我的最愛及考前小卡會加入這個書架，原有筆記會保留。
+      </p>
       <div v-if="backupError" class="backup-import-error" role="alert">
         <strong>無法匯入 {{ backupFileName }}</strong>
         <p>{{ backupError }}</p>

@@ -82,6 +82,7 @@ export function exportBackup(books: BookRecord[]): string {
     format: "paper-between-bookshelf",
     version: 1,
     books: books.map((b) => ({
+      sourceId: b.document.id,
       title: b.document.title,
       html: notebookHtml(b.document),
       warnings: b.document.warnings,

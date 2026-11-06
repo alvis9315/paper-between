@@ -216,7 +216,7 @@ onBeforeUnmount(() => {
       <a v-if="originalUrl" :href="originalUrl" target="_blank" rel="noopener"
         >開啟原始 PDF</a
       >
-      <span>原檔仍保留，無需刪除筆記。</span>
+      <span>筆記未刪除；原檔遺失時可從 ZIP 備份還原。</span>
     </div>
     <span v-else-if="textWarning" class="pdf-text-warning" role="status">{{
       textWarning
