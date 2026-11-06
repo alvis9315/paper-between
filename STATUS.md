@@ -24,11 +24,11 @@ tags:
 
 ## 正在進行
 
-1.6.1 已完成驗證，正在同步 GitHub 並部署；成功前以下方既有部署紀錄為準。
+1.6.1 已驗證、同步 GitHub 並部署成功，沒有未完成的介面修正。PDF 智慧重排僅完成評估，未實作。
 
 ## 下一個明確動作
 
-推送 GitHub 並部署既有 Site，回填來源 commit 與版本／部署 ID。PDF 智慧重排屬技術評估，後續若實作先用實際 PDF／DOCX 驗證內容類型與區塊。
+由使用者確認新版按鈕與留白；PDF 智慧重排屬技術評估，後續若實作先用實際 PDF／DOCX 驗證內容類型與區塊。換機照交接文件 pull／npm ci／port 4112 接續。
 
 ## 最新驗證
 
@@ -46,7 +46,16 @@ tags:
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 
-### 最新：1.6.0
+### 最新：1.6.1
+
+- 原始碼版本：1.6.1；Sites 版本：11。
+- 部署來源 commit：`45469fe9aa776c3f84ae46512a3acfb34509ae4b`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_4c79f488ce8881918e463d106381c7d8`
+- deployment_id：`appgdep_6aedd2cd1c7881919b3fcf362fdc2757`
+- 結果：`succeeded`，2026-11-06 21:15（Asia/Taipei）。
+- 部署後的純文件 commit 只回填紀錄，真正部署程式以上述來源 commit 為準。
+
+### 歷史：1.6.0
 
 - 原始碼版本：1.6.0；Sites 版本：10。
 - 部署來源 commit：`c293e4a21fa72c0566f6d6f33c99be515eb83e20`（與本輪 GitHub 程式版本一致）。
