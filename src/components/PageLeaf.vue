@@ -3,6 +3,8 @@ import { computed, nextTick, ref, watch } from "vue";
 import { mediaUrl } from "../core/media";
 import type { PaperPage, SearchHit } from "../core/model";
 import { highlightPage } from "../core/search";
+import { markAnnotations } from "../core/annotations";
+import type { Annotation } from "../core/model";
 const props = defineProps<{
   page?: PaperPage;
   title: string;
@@ -10,11 +12,12 @@ const props = defineProps<{
   activeHit?: SearchHit;
   highlight?: boolean;
   side?: string;
+  annotations?: Annotation[];
 }>();
 const content = ref<HTMLElement>();
 const html = computed(() =>
   highlightPage(
-    props.page?.fragments.map((f) => f.html).join("") || "",
+    markAnnotations(props.page?.fragments.map((f) => f.html).join("") || "", props.annotations || []),
     props.hits,
     props.activeHit,
   ),

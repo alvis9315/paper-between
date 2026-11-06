@@ -23,6 +23,8 @@ export function cloneRecord(book: BookRecord): BookRecord {
   }
   copy.anchor.blockId =
     mapping.get(copy.anchor.blockId) || copy.document.blocks[0]!.id;
+  copy.document.annotations = copy.document.annotations?.map(a => ({...a, id:crypto.randomUUID(),
+    targets:a.targets.map(t=>({...t,blockId:mapping.get(t.blockId)||t.blockId}))}));
   copy.createdAt = copy.updatedAt = Date.now();
   delete copy.deletedAt;
   return copy;

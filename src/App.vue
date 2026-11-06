@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
+  defineAsyncComponent,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -13,7 +14,9 @@ import BookView from "./components/BookView.vue";
 import PaginationBar from "./components/PaginationBar.vue";
 import TextEntryDialog from "./components/TextEntryDialog.vue";
 import Bookshelf from "./components/Bookshelf.vue";
-import NotebookEditor from "./components/NotebookEditor.vue";
+const NotebookEditor=defineAsyncComponent(()=>import('./components/NotebookEditor.vue'));
+import HighlightPanel from './components/HighlightPanel.vue';
+import { categories, selectionTargets, reanchorAnnotations } from './core/annotations';
 import { createDemo } from "./data/demo";
 import { paginate } from "./core/pagination";
 import { importDocx } from "./core/importer";
@@ -36,6 +39,7 @@ import type {
   PaperPage,
   SearchHit,
   BookRecord,
+  Annotation, AnnotationTarget,
 } from "./core/model";
 
 const doc = shallowRef<Notebook>();
@@ -53,6 +57,10 @@ const textOpen = ref(false);
 const shelfOpen = ref(false);
 const editorOpen = ref(false);
 const richNew = ref(false);
+const highlightOpen=ref(false);
+const pendingTargets=shallowRef<AnnotationTarget[]>([]);
+const selectedAnnotation=ref<string>();
+let deletedAnnotation: {bookId:string;annotation:Annotation}|undefined;
 const books = shallowRef<BookRecord[]>([]);
 const activeId = ref<string>();
 const backupInput = ref<HTMLInputElement>();
@@ -350,12 +358,58 @@ async function restoreBackupFile(e: Event) {
   }
 }
 async function saveEdited(candidate: Notebook) {
+  if(candidate.id===doc.value?.id) candidate.annotations=reanchorAnnotations(doc.value.annotations||[],candidate);
   editorOpen.value = false;
   currentAnchor = { blockId: candidate.blocks[0]!.id, offset: 0 };
   pendingImportMessage = "這本筆記已更新並重新分頁。";
   await layout(candidate, currentAnchor);
 }
+function captureSelection() {
+  if(busy.value||turning.value||!doc.value||!workspace.value) return;
+  pendingTargets.value=selectionTargets(workspace.value,doc.value);
+}
+function setAnnotations(bookId:string,annotations:Annotation[]) {
+  books.value=books.value.map(b=>b.document.id===bookId?{...b,document:{...b.document,annotations},updatedAt:Date.now()}:b);
+  if(doc.value?.id===bookId) doc.value={...doc.value,annotations};
+  dirtyIds.add(bookId); queueSave();
+}
+function addAnnotation(category:Annotation['category']) {
+  if(!doc.value||!pendingTargets.value.length) return;
+  if((doc.value.annotations?.length||0)>=10000){notify('每本最多 10,000 筆重點，請拆成多本筆記。',true);return;}
+  const annotation:Annotation={id:crypto.randomUUID(),targets:pendingTargets.value,category,tags:[],comment:'',createdAt:Date.now(),updatedAt:Date.now(),status:'linked'};
+  setAnnotations(doc.value.id,[...(doc.value.annotations||[]),annotation]);
+  pendingTargets.value=[]; window.getSelection()?.removeAllRanges(); notify(`已收好一筆${categories[category]}。`);
+}
+function updateAnnotation(id:string,annotation:Annotation){
+  const record=books.value.find(b=>b.document.id===id); if(!record)return;
+  setAnnotations(id,(record.document.annotations||[]).map(a=>a.id===annotation.id?annotation:a));
+}
+function removeAnnotation(id:string,annotationId:string){
+  const record=books.value.find(b=>b.document.id===id), annotation=record?.document.annotations?.find(a=>a.id===annotationId);
+  if(!record||!annotation)return; deletedAnnotation={bookId:id,annotation};
+  setAnnotations(id,record.document.annotations!.filter(a=>a.id!==annotationId)); notify('已刪除重點，可在重點面板復原。');
+}
+function undoAnnotation(){
+  if(!deletedAnnotation){notify('目前沒有可復原的重點。');return;}
+  const {bookId,annotation}=deletedAnnotation;
+  const record=books.value.find(b=>b.document.id===bookId);
+  if(record){setAnnotations(bookId,[...(record.document.annotations||[]),annotation]);deletedAnnotation=undefined;notify('重點已復原。');}
+}
+async function locateAnnotation(id:string,a:Annotation){
+  if(busy.value||turning.value||a.status!=='linked')return;
+  if(doc.value?.id!==id) await openBook(id);
+  const target=a.targets[0]!;
+  jump(pageForAnchor(pages.value,{blockId:target.blockId,offset:target.start})+1,{blockId:target.blockId,offset:target.start});
+  selectedAnnotation.value=a.id;
+  workspace.value?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function annotationClick(event:MouseEvent){
+  if(window.getSelection()?.toString())return;
+  const id=(event.target as HTMLElement).closest<HTMLElement>('[data-annotation-id]')?.dataset.annotationId;
+  if(id){selectedAnnotation.value=id;highlightOpen.value=true;}
+}
 function changed(next: number) {
+  pendingTargets.value=[];
   index.value = next;
   currentAnchor = pendingNavigationAnchor || anchorForPage(pages.value, next);
   pendingNavigationAnchor = undefined;
@@ -546,6 +600,7 @@ watch(query, (value) => {
     resultLimit.value = 60;
   }, 260);
 });
+watch(()=>doc.value?.id,()=>{pendingTargets.value=[];highlightOpen.value=false;});
 watch([importOpen, helpOpen], async ([openImport, openHelp]) => {
   if (openImport || openHelp) {
     await nextTick();
@@ -555,6 +610,7 @@ watch([importOpen, helpOpen], async ([openImport, openHelp]) => {
 onMounted(async () => {
   window.addEventListener("resize", scheduleResize);
   window.addEventListener("keydown", keydown);
+  document.addEventListener('selectionchange',captureSelection);
   resizeObserver = new ResizeObserver(scheduleResize);
   if (workspace.value) resizeObserver.observe(workspace.value);
   try {
@@ -586,6 +642,7 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect();
   window.removeEventListener("resize", scheduleResize);
   window.removeEventListener("keydown", keydown);
+  document.removeEventListener('selectionchange',captureSelection);
   [resizeTimer, queryTimer, saveTimer, toastTimer, locatorTimer].forEach(
     clearTimeout,
   );
@@ -809,6 +866,9 @@ onBeforeUnmount(() => {
       </div>
       <div
         ref="workspace"
+        @pointerup="captureSelection"
+        @keyup="captureSelection"
+        @click="annotationClick"
         class="book-workspace"
         :style="bookStyle"
         :aria-busy="busy"
@@ -817,6 +877,7 @@ onBeforeUnmount(() => {
           v-if="pages.length"
           ref="book"
           :pages="pages"
+          :annotations="doc?.annotations"
           :index="index"
           :single="size.mobile"
           :title="title"
@@ -844,6 +905,11 @@ onBeforeUnmount(() => {
           ></progress>
         </div>
       </div>
+      <div v-if="pendingTargets.length" class="selection-tools" role="toolbar" aria-label="畫重點" @pointerdown.prevent>
+        <span>畫重點</span><button v-for="(label,key) in categories" :key="key" :class="`swatch-${key}`" @click="addAnnotation(key)">{{label}}</button><button aria-label="取消畫重點" @click="pendingTargets=[]">×</button>
+      </div>
+      <div class="highlight-entry"><button :disabled="busy || turning" @click="highlightOpen=!highlightOpen">重點筆記 <span>{{doc?.annotations?.length||0}}</span></button><span>選取文字，留下你的重點</span></div>
+      <HighlightPanel v-if="highlightOpen" :books="books" :active-id="activeId" :selected="selectedAnnotation" @close="highlightOpen=false" @locate="locateAnnotation" @update="updateAnnotation" @remove="removeAnnotation" @undo="undoAnnotation" />
       <PaginationBar
         v-if="pages.length"
         :index="index"
@@ -872,6 +938,7 @@ onBeforeUnmount(() => {
       ><span>純前端閱讀 <span class="footer-dot">·</span> 無須登入</span>
     </footer>
     <NotebookEditor
+      v-if="editorOpen"
       :open="editorOpen"
       :document="richNew ? undefined : doc"
       @close="

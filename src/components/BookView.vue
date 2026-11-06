@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from "vue";
 import PageLeaf from "./PageLeaf.vue";
-import type { PaperPage, SearchHit } from "../core/model";
+import type { PaperPage, SearchHit, Annotation } from "../core/model";
 const props = defineProps<{
   pages: PaperPage[];
   index: number;
@@ -11,6 +11,7 @@ const props = defineProps<{
   activeHit?: SearchHit;
   located?: number;
   disabled?: boolean;
+  annotations?: Annotation[];
 }>();
 const emit = defineEmits<{
   change: [index: number];
@@ -129,6 +130,7 @@ onBeforeUnmount(() => clearTimeout(timer));
     <div class="book-pages">
       <PageLeaf
         :page="pages[left]"
+        :annotations="annotations"
         :title="title"
         :hits="hits"
         :active-hit="activeHit"
@@ -138,6 +140,7 @@ onBeforeUnmount(() => clearTimeout(timer));
       <PageLeaf
         v-if="!single"
         :page="pages[right]"
+        :annotations="annotations"
         :title="title"
         :hits="hits"
         :active-hit="activeHit"
@@ -154,6 +157,7 @@ onBeforeUnmount(() => clearTimeout(timer));
         <div class="sheet-face sheet-front">
           <PageLeaf
             :page="front"
+            :annotations="annotations"
             :title="title"
             :hits="hits"
             :active-hit="activeHit"
@@ -162,6 +166,7 @@ onBeforeUnmount(() => clearTimeout(timer));
         <div class="sheet-face sheet-back">
           <PageLeaf
             :page="back"
+            :annotations="annotations"
             :title="title"
             :hits="hits"
             :active-hit="activeHit"

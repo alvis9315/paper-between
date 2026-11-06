@@ -1,5 +1,5 @@
 ﻿<script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onMounted } from "vue";
 import { useEditor, EditorContent } from "@tiptap/vue-3";
 import StarterKit from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
@@ -16,7 +16,7 @@ import {
 } from "../core/media";
 const props = defineProps<{ open: boolean; document?: Notebook }>();
 const emit = defineEmits<{ close: []; save: [doc: Notebook] }>();
-const title = ref("");
+const title = ref(props.document?.title || "");
 const error = ref("");
 const processing = ref("");
 const count = ref(0);
@@ -31,7 +31,7 @@ const editor = useEditor({
     FigureNote,
     StableIds,
   ],
-  content: "<p></p>",
+  content: props.document ? notebookHtml(props.document) : "<p></p>",
   editorProps: {
     attributes: {
       role: "textbox",
@@ -64,6 +64,7 @@ const editor = useEditor({
     void updateUsage();
   },
 });
+onMounted(async()=>{ await updateUsage(); quota.value=await storageUsage(); });
 async function updateUsage() {
   if (!editor.value) return;
   const ids: string[] = [];

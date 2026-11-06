@@ -8,6 +8,7 @@ import {
   validateBookMedia,
 } from "./media";
 import type { BookRecord, MediaAsset } from "./model";
+import { validateAnnotations } from './annotations';
 export async function createBundle(books: BookRecord[]): Promise<Blob> {
   const metadata = JSON.parse(exportBackup(books));
   const files: Record<string, Uint8Array> = {};
@@ -86,6 +87,9 @@ export async function readBundle(file: File): Promise<BookRecord[]> {
     }),
   );
   const staged: MediaAsset[] = [];
+  books.forEach((book,i)=>{
+    book.document.annotations=validateAnnotations(manifest.books[i]?.annotations, book.document);
+  });
   for (const asset of manifest.assets) {
     if (
       !/^m-[a-f0-9]{64}$/.test(asset.id) ||
