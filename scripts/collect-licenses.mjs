@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
 const parts = [
-  "紙間使用的第三方套件與授權\nDOMPurify 採 Apache-2.0；雙重授權套件採其寬鬆授權選項。\n",
+  "頁白使用的第三方套件與授權\nDOMPurify 採 Apache-2.0；雙重授權套件採其寬鬆授權選項。\n",
 ];
 for (const [location, pkg] of Object.entries(lock.packages)) {
   if (!location || pkg.dev) continue;

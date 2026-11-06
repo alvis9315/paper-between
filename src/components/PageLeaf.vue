@@ -69,7 +69,7 @@ watch(
     </div>
     <div v-else ref="content" class="page-content" v-html="html"></div>
     <footer class="paper-footer">
-      <span>{{ page ? "紙 間" : "" }}</span
+      <span>{{ page ? "頁 白" : "" }}</span
       ><span>{{ page ? String(page.index + 1).padStart(2, "0") : "" }}</span
       ><span>{{ page ? "閱讀筆記" : "" }}</span>
     </footer>

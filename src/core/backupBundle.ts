@@ -67,7 +67,7 @@ export async function createBundle(books: BookRecord[]): Promise<Blob> {
 }
 export async function readBundle(file: File): Promise<RestoredBooks> {
   if (file.size > 110 * 1024 * 1024)
-    throw new Error("備份超過 110MB，請選擇較小的紙間備份。");
+    throw new Error("備份超過 110MB，請選擇較小的頁白備份。");
   if (/\.json$/i.test(file.name)) return importBackup(await file.text());
   let total = 0;
   let files: Record<string, Uint8Array>;
@@ -96,7 +96,7 @@ export async function readBundle(file: File): Promise<RestoredBooks> {
     !Array.isArray(manifest.assets) ||
     manifest.assets.length > 10000
   )
-    throw new Error("這不是支援的紙間完整備份。");
+    throw new Error("這不是支援的頁白完整備份。");
   const books = importBackup(
     JSON.stringify({
       format: "paper-between-bookshelf",

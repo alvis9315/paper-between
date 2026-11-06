@@ -346,7 +346,7 @@ async function downloadBackup(id?: string) {
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `紙間書架備份-${new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Taipei" }).format(new Date())}.zip`;
+    a.download = `頁白書架備份-${new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Taipei" }).format(new Date())}.zip`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     notify(
@@ -774,9 +774,9 @@ onBeforeUnmount(() => {
     @drop.prevent="dropFile"
   >
     <header class="site-header">
-      <a class="brand" href="#" aria-label="紙間首頁" @click.prevent="showShelf"
+      <a class="brand" href="#" aria-label="頁白首頁" @click.prevent="showShelf"
         ><span class="brand-mark"><AppIcon name="book" :size="25" /></span
-        ><span class="brand-name">紙間</span
+        ><span class="brand-name">頁白</span
         ><span class="brand-subtitle">留一點時間，給閱讀。</span></a
       >
       <div class="header-actions">
@@ -1118,7 +1118,7 @@ onBeforeUnmount(() => {
     </main>
     <footer class="site-footer">
       <span
-        >紙間 <span class="footer-dot">·</span> 讓閱讀，回到紙上的節奏。</span
+        >頁白 <span class="footer-dot">·</span> 讓閱讀，回到紙上的節奏。</span
       ><span>純前端閱讀 <span class="footer-dot">·</span> 無須登入</span>
     </footer>
     <NotebookEditor
@@ -1179,7 +1179,7 @@ onBeforeUnmount(() => {
           ><span class="dialog-emblem"
             ><AppIcon name="upload" :size="28"
           /></span>
-          <h2>把你的筆記，帶進紙間。</h2>
+          <h2>把你的筆記，帶進頁白。</h2>
           <p>選擇一份 Word 文件，我們會替你整理成好讀的紙頁。</p>
           <button
             class="drop-zone"
@@ -1208,7 +1208,7 @@ onBeforeUnmount(() => {
         <template v-else
           ><span class="dialog-emblem"><AppIcon name="book" :size="28" /></span>
           <h2>慢一點，讀得更清楚。</h2>
-          <p>紙間會依照你的螢幕，自動把內容排入固定紙頁。</p>
+          <p>頁白會依照你的螢幕，自動把內容排入固定紙頁。</p>
           <ul class="help-list">
             <li>點擊下方按鈕、紙頁邊緣，或使用 ← → 翻頁。</li>
             <li>手機左右輕滑可翻頁；長按仍可選取文字。</li>

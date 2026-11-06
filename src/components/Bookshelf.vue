@@ -181,7 +181,7 @@ function rename(id: string) {
             <span class="mini-book-line"></span
             ><AppIcon name="book" :size="20" />
             <h2>{{ b.document.title }}</h2>
-            <span class="mini-book-label">紙 間 · 閱 讀 筆 記</span>
+            <span class="mini-book-label">頁 白 · 閱 讀 筆 記</span>
           </div>
           <div class="book-card-content">
             <div

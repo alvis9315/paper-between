@@ -103,7 +103,7 @@ export function importBackup(text: string): BookRecord[] {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error("無法讀取備份，請選擇紙間匯出的 JSON 備份。");
+    throw new Error("無法讀取備份，請選擇頁白匯出的 JSON 備份。");
   }
   if (
     data?.format !== "paper-between-bookshelf" ||
@@ -112,7 +112,7 @@ export function importBackup(text: string): BookRecord[] {
     data.books.length > 500 ||
     !data.books.length
   )
-    throw new Error("這不是支援的紙間書架備份。");
+    throw new Error("這不是支援的頁白書架備份。");
   return data.books.map((b: any) => {
     if (
       typeof b.title !== "string" ||
