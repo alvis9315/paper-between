@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import AppIcon from "./AppIcon.vue";
+import IconAction from "./IconAction.vue";
+import {
+  ArchiveRestore,
+  Copy,
+  Download,
+  RotateCcw,
+  SquarePen,
+  Trash2,
+} from "@lucide/vue";
 import type { BookRecord } from "../core/model";
 const props = defineProps<{
   books: BookRecord[];
@@ -124,7 +133,11 @@ function rename(id: string) {
           :disabled="busy"
           @click="emit('restoreBackup')"
         >
-          匯入備份
+          <ArchiveRestore
+            :size="17"
+            :stroke-width="1.7"
+            aria-hidden="true"
+          />匯入備份
         </button>
       </div>
     </div>
@@ -205,24 +218,46 @@ function rename(id: string) {
           ><button type="button" @click="editing = undefined">取消</button
           ><span v-if="renameError" role="alert">{{ renameError }}</span>
         </form>
-        <div v-else class="book-card-actions">
-          <button :disabled="busy" @click="emit('backupOne', b.document.id)">
-            備份此本
-          </button>
-          <template v-if="!trash"
-            ><button :disabled="busy" @click="startRename(b)">重新命名</button
-            ><button :disabled="busy" @click="emit('duplicate', b.document.id)">
-              複製</button
-            ><button :disabled="busy" @click="emit('trash', b.document.id)">
-              移到回收桶
-            </button></template
-          ><button
+        <div
+          v-else
+          class="book-card-actions"
+          role="group"
+          :aria-label="`《${b.document.title}》的筆記操作`"
+        >
+          <IconAction
+            :icon="Download"
+            label="備份此本"
+            :disabled="busy"
+            @click="emit('backupOne', b.document.id)"
+          />
+          <template v-if="!trash">
+            <IconAction
+              :icon="SquarePen"
+              label="重新命名"
+              :disabled="busy"
+              @click="startRename(b)"
+            />
+            <IconAction
+              :icon="Copy"
+              label="複製"
+              :disabled="busy"
+              @click="emit('duplicate', b.document.id)"
+            />
+            <IconAction
+              :icon="Trash2"
+              label="移到回收桶"
+              :disabled="busy"
+              danger
+              @click="emit('trash', b.document.id)"
+            />
+          </template>
+          <IconAction
             v-else
+            :icon="RotateCcw"
+            label="還原筆記"
             :disabled="busy"
             @click="emit('restore', b.document.id)"
-          >
-            <AppIcon name="restore" :size="14" />還原筆記
-          </button>
+          />
         </div>
       </article>
     </section>
@@ -486,20 +521,9 @@ function rename(id: string) {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 11px 18px;
+  padding: 8px 14px;
   border-top: 1px solid var(--line, #e9e0d3);
-}
-.book-card-actions button {
-  background: transparent;
-  color: var(--text-secondary, #957b63);
-  font-size: 10px;
-  padding: 3px 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.book-card-actions button:hover {
-  color: var(--text-primary, #674632);
+  background: color-mix(in srgb, var(--field) 50%, transparent);
 }
 .rename-form {
   display: flex;
@@ -633,10 +657,8 @@ function rename(id: string) {
     padding: 18px 20px 0;
   }
   .book-card-actions {
-    padding: 12px 20px;
-  }
-  .book-card-actions button {
-    font-size: 11px;
+    padding: 8px 10px;
+    gap: 4px;
   }
   .shelf-local-note {
     font-size: 9px;
