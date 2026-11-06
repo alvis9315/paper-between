@@ -2039,6 +2039,7 @@ main {
 /* Reading uses the viewport; only overlays and enlarged pages may scroll. */
 .app {
   --workspace-gutter: 5.1vw;
+  --reader-gutter: max(40px, 2.55vw);
 }
 .site-header {
   position: sticky;
@@ -2107,7 +2108,7 @@ body:has(.reading-mode) {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 12px var(--workspace-gutter) 22px;
+  padding: 12px var(--reader-gutter) 22px;
   display: flex;
   flex-direction: column;
 }
@@ -2125,7 +2126,8 @@ body:has(.reading-mode) {
 .paper,
 .single .paper,
 .measurement-host .paper {
-  padding: 32px 32px 40px;
+  --paper-inline: 16px;
+  padding: 32px var(--paper-inline) 40px;
 }
 .page-content {
   height: calc(var(--page-height) - 72px);
@@ -2133,11 +2135,12 @@ body:has(.reading-mode) {
 .page-running-title,
 .single .page-running-title {
   top: 12px;
-  left: 32px;
-  right: 32px;
+  left: var(--paper-inline);
+  right: var(--paper-inline);
 }
 .pdf-paper {
-  padding: 26px 22px 34px;
+  --paper-inline: 11px;
+  padding: 26px var(--paper-inline) 34px;
 }
 .pdf-paper .page-content {
   height: calc(var(--page-height) - 60px);
@@ -2145,8 +2148,8 @@ body:has(.reading-mode) {
 .paper-footer,
 .single .paper-footer {
   bottom: 5px;
-  left: 32px;
-  right: 32px;
+  left: var(--paper-inline);
+  right: var(--paper-inline);
   height: 30px;
   justify-content: center;
 }
@@ -2369,6 +2372,7 @@ body:has(.reading-mode) {
 @media (max-width: 819px) {
   .app {
     --workspace-gutter: 20px;
+    --reader-gutter: 10px;
   }
   .reading-mode .site-header {
     padding-bottom: 4px;
@@ -2390,10 +2394,12 @@ body:has(.reading-mode) {
   }
   .single .paper,
   .measurement-host.single .paper {
-    padding-inline: 24px;
+    --paper-inline: 12px;
+    padding-inline: var(--paper-inline);
   }
   .single .pdf-paper {
-    padding: 26px 20px 34px;
+    --paper-inline: 10px;
+    padding: 26px var(--paper-inline) 34px;
   }
   .reader-info {
     top: 110px;
@@ -2433,7 +2439,7 @@ body:has(.reading-mode) {
   background: transparent;
 }
 
-/* Page actions stay in the outer margin; their hover surface never covers text. */
+/* Desktop actions sit clear of the cover, with a protected viewport gutter. */
 .page-edge,
 .single .page-edge {
   width: 24px;
@@ -2443,10 +2449,10 @@ body:has(.reading-mode) {
   background: transparent;
 }
 .page-edge.edge-left {
-  left: -6px;
+  left: -34px;
 }
 .page-edge.edge-right {
-  right: -6px;
+  right: -34px;
 }
 .page-edge svg {
   display: block;
@@ -2621,4 +2627,22 @@ body:has(.modal-backdrop) {
 }
 .is-scrolling::-webkit-scrollbar-thumb {
   background: var(--border-strong, #aa9383);
+}
+
+/* Single pages keep navigation in the footer, clear of text and the zoom action. */
+@media (max-width: 819px) {
+  .single .page-edge {
+    top: auto;
+    bottom: 5px;
+    width: 32px;
+    height: 30px;
+  }
+  .single .page-edge.edge-left {
+    left: calc(50% - 68px);
+    right: auto;
+  }
+  .single .page-edge.edge-right {
+    left: calc(50% + 36px);
+    right: auto;
+  }
 }

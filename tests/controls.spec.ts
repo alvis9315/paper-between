@@ -66,6 +66,60 @@ test("reading controls stay clear of content, tooltips appear, and enlarged tool
   }));
   expect(before.background).toBe("rgba(0, 0, 0, 0)");
   expect(before.button).toBeGreaterThanOrEqual(before.content);
+  for (const width of [2868, 1440, 1024, 820, 819, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect
+      .poll(() =>
+        page
+          .locator(".book-shell")
+          .evaluate((el) => Math.round(el.getBoundingClientRect().width)),
+      )
+      .toBeGreaterThan(width * 0.8);
+    await page.waitForTimeout(400);
+    await expect(page.locator(".book-workspace")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
+    const geometry = await page.locator(".book-shell").evaluate((el) => {
+      const cover = el.querySelector(".book-cover")!.getBoundingClientRect();
+      const buttons = [...el.querySelectorAll(".page-edge")].map((button) =>
+        button.getBoundingClientRect(),
+      );
+      const protectedAreas = [
+        ...el.querySelectorAll(
+          ".book-pages > .paper .page-content, .paper-page-number, .page-enlarge-action",
+        ),
+      ].map((area) => area.getBoundingClientRect());
+      const intersects = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right &&
+        a.right > b.left &&
+        a.top < b.bottom &&
+        a.bottom > b.top;
+      return {
+        cover: { left: cover.left, right: cover.right },
+        buttons: buttons.map((b) => ({
+          left: b.left,
+          right: b.right,
+          bottom: b.bottom,
+          overlap: protectedAreas.some((area) => intersects(b, area)),
+        })),
+        padding: getComputedStyle(el.querySelector(".paper")!).paddingLeft,
+      };
+    });
+    expect(geometry.padding).toBe(width < 820 ? "12px" : "16px");
+    for (const button of geometry.buttons) {
+      expect(button.left).toBeGreaterThanOrEqual(0);
+      expect(button.right).toBeLessThanOrEqual(width);
+      expect(button.bottom).toBeLessThanOrEqual(900);
+      expect(button.overlap).toBe(false);
+    }
+    if (width >= 820) {
+      expect(geometry.buttons[0].right).toBeLessThan(geometry.cover.left);
+      expect(geometry.buttons[1].left).toBeGreaterThan(geometry.cover.right);
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.waitForTimeout(400);
   await next.hover();
   await expect
     .poll(() => next.evaluate((el) => getComputedStyle(el).backgroundColor))

@@ -63,7 +63,7 @@ async function assertViewport(page: Page) {
         left: header.left,
         bottom: header.bottom,
         padding: parseFloat(
-          getComputedStyle(document.querySelector(".site-header")!).paddingLeft,
+          getComputedStyle(document.querySelector(".reader-main")!).paddingLeft,
         ),
       },
       workspace: { width: workspace.width },

@@ -1,12 +1,12 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.6.0**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-06（Asia/Taipei）。原始碼版本：**1.6.1**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-1.6.0 已實作：指南 top layer 限高、全站捲軸活動顯示、書架 6／12／24 分頁與我的最愛、工具列 hover、搜尋框、等距操作、觸控板翻頁及備份格式引導。build、完整 12 個情境及 diff 檢查已通過，GitHub 同步與 Sites 部署成功，目前沒有未完成程式工作。
+1.6.1：修正按鈕跨書框、減半閱讀器與紙頁內左右間距。桌機完整書外導覽，窄螢幕使用頁腳頁碼兩旁。`src/style.css` 同時調整量測頁與實際頁；`tests/controls.spec.ts` 增加 2868／1440／1024／820／819／390／320px 不重疊驗證。build、完整 12 個情境及 diff 檢查通過，正在同步 GitHub／部署，成功前以實際部署紀錄為準。
 
-新增入口：`ModalShell.vue`、`CollectionPagination.vue`、`core/scrollActivity.ts`。收藏使用 `BookRecord.favorite?: boolean`，`backup.ts` 在 JSON 與 ZIP manifest 保留欄位，舊檔預設 false。測試追加到既有三個 spec（共 12 情境），全部合成資料。
+PDF／Word 的新需求先做技術評估，尚未實作語意重排。詳見 [文件重排評估](DOCUMENT-REFLOW.md)：保留原貌＋可校正區塊，圖解保持群組，正文用可讀字級重排，超高續頁，低信心退回原貌。若後續實作，先取得原始 PDF／DOCX 驗證圖像／文字／向量成分，不能只憑截圖承諾效果。
 
 ## 每輪部署方式與目前狀態
 
@@ -106,7 +106,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-1.6.0 build、12 個情境與 diff 檢查已通過，已同步 GitHub 並部署成功，沒有未完成程式工作。實體 Mac 觸控板手感、Safari 與實體手機仍待使用者確認。下一輪中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
+1.6.1 已驗證（build／12 個情境／diff），正在同步 GitHub／部署；程式入口與下一步見本文件頂部。實體 Mac 觸控板手感、Safari 與實體手機仍待使用者確認。下一輪中斷時以實況取代本段，並同步 STATUS。可使用下面格式，未知就寫「未確認」，不得留成看似完成：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei
