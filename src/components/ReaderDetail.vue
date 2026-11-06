@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
+import ChoiceSelect from "./ChoiceSelect.vue";
 import PageLeaf from "./PageLeaf.vue";
 import PdfPage from "./PdfPage.vue";
 import type { Annotation, PageSize, PaperPage, SearchHit } from "../core/model";
@@ -31,7 +32,9 @@ function move(direction: number) {
 }
 function keys(event: KeyboardEvent) {
   if (
-    (event.target as HTMLElement).closest("select,input") ||
+    (event.target as HTMLElement).closest(
+      'select,input,[role="combobox"],[role="listbox"]',
+    ) ||
     event.metaKey ||
     event.ctrlKey ||
     event.altKey ||
@@ -63,6 +66,18 @@ onMounted(() => dialog.value?.showModal());
     @click="$event.target === dialog && emit('close')"
   >
     <div class="detail-toolbar">
+      <div class="detail-zoom">
+        <ChoiceSelect
+          v-model="zoom"
+          label="閱讀縮放"
+          :options="[
+            { value: 1, label: '適中' },
+            { value: 1.5, label: '150%' },
+            { value: 2, label: '200%' },
+            { value: 3, label: '300%' },
+          ]"
+        />
+      </div>
       <div class="detail-navigation">
         <button
           class="icon-button"
@@ -82,14 +97,6 @@ onMounted(() => dialog.value?.showModal());
           <AppIcon name="right" />
         </button>
       </div>
-      <label
-        >縮放<select v-model="zoom" aria-label="閱讀縮放">
-          <option :value="1">{{ fragment?.pdf ? "適合寬度" : "100%" }}</option>
-          <option :value="1.5">150%</option>
-          <option :value="2">200%</option>
-          <option :value="3">300%</option>
-        </select></label
-      >
       <button
         class="icon-button"
         aria-label="關閉放大閱讀"

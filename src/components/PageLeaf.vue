@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch, defineAsyncComponent } from "vue";
 const PdfPage = defineAsyncComponent(() => import("./PdfPage.vue"));
-import AppIcon from "./AppIcon.vue";
+import IconAction from "./IconAction.vue";
+import { ZoomIn } from "@lucide/vue";
 import { mediaUrl } from "../core/media";
 import type { PaperPage, SearchHit } from "../core/model";
 import { highlightPage } from "../core/search";
@@ -83,21 +84,19 @@ watch(
       <button
         v-if="page"
         class="paper-page-number"
-        title="跳至頁碼"
         :aria-label="`第 ${page.index + 1} 頁，跳至頁碼`"
         @click="emit('jump', page.index)"
       >
         {{ String(page.index + 1).padStart(2, "0") }}
       </button>
-      <button
-        v-if="page"
-        class="page-enlarge"
-        aria-label="放大閱讀"
-        title="放大閱讀"
-        @click="emit('enlarge', page.index)"
-      >
-        <AppIcon name="zoom" :size="17" />
-      </button>
+      <span v-if="page" class="page-enlarge-action"
+        ><IconAction
+          compact
+          small
+          :icon="ZoomIn"
+          label="放大閱讀"
+          @click="emit('enlarge', page.index)"
+      /></span>
     </footer>
   </article>
 </template>

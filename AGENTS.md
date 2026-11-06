@@ -14,6 +14,7 @@
 - 頁碼在書頁底部，點擊開啟跳頁與首末頁面板；前後箭頭保留在書本兩側。說明收進閱讀指南／資訊。
 - 書架支援卡片／條列，記住偏好。「我的書架」在書架頁是目前位置，回筆記使用「回到閱讀」。
 - 日夜共用可可棕主色與原書封；夜間使用炭灰背景。hover 輕抬／傾斜，尊重 `prefers-reduced-motion`。
+- 可見控制元件必須符合主題樣式；下拉用 `ChoiceSelect`、圖示提示用 `IconAction`、展開區用 `DisclosurePanel`，不要加入原生 select／title 提示／未設計的勾選或展開外觀。保留語意化 HTML 與鍵盤能力；完整盤點見 `docs/UI-CONTROLS.md`。
 - 本機固定 `npm run dev -- --port 4112 --strictPort`；port 正本在 WORKSPACE-SETUP。不要另佔預設 port 當常用入口。
 - 本 repo 沿用 `main`；不要自行建立新分支。GitHub 原始碼同步與網站部署分開，未實際部署就不要宣稱線上版已更新。
 
@@ -29,7 +30,7 @@
 ## 驗證與版本
 
 - 交付前執行 `npm run build`（含 typecheck）；互動、版面、主題或測試變動再執行 `npm test`。
-- Chrome 為目前 Playwright 設定的瀏覽器。5 個測試使用合成資料；報告與截圖可重建，不是接手的必要檔案。
+- Chrome 為目前 Playwright 設定的瀏覽器。瀏覽器測試使用合成資料；報告與截圖可重建，不是接手的必要檔案。
 - 檢查 `git diff --check`。授權檔會依建置平台生成；沒有變更依賴時，避免混入無關的平台授權檔差異。
 - 完成一個版本時同步 `package.json`、`package-lock.json` 與 `CHANGELOG.md`。修 bug 用 patch、新增相容功能用 minor；尚未完成的項目放 `Unreleased` 或狀態文件，不冒充已發布。
 - Conventional Commits，例如 `feat: ...`、`fix: ...`、`docs: ...`。不 force push，不覆蓋使用者既有修改。

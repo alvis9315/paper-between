@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { Annotation, BookRecord } from "../core/model";
+import ChoiceSelect from "./ChoiceSelect.vue";
 import { categories } from "../core/annotations";
 const props = defineProps<{
   books: BookRecord[];
@@ -18,6 +19,10 @@ const scope = ref("current"),
   category = ref(""),
   query = ref("");
 const limit = ref(80);
+const categoryOptions = Object.entries(categories).map(([value, label]) => ({
+  value: value as Annotation["category"],
+  label,
+}));
 const entries = computed(() =>
   props.books
     .filter(
@@ -70,16 +75,19 @@ function edit(bookId: string, a: Annotation, field: string, event: Event) {
       </button>
     </div>
     <div class="highlight-filters">
-      <select v-model="scope" aria-label="重點範圍">
-        <option value="current">這本筆記</option>
-        <option value="all">全部筆記</option>
-      </select>
-      <select v-model="category" aria-label="重點分類">
-        <option value="">全部分類</option>
-        <option v-for="(label, key) in categories" :key="key" :value="key">
-          {{ label }}
-        </option>
-      </select>
+      <ChoiceSelect
+        v-model="scope"
+        label="重點範圍"
+        :options="[
+          { value: 'current', label: '這本筆記' },
+          { value: 'all', label: '全部筆記' },
+        ]"
+      />
+      <ChoiceSelect
+        v-model="category"
+        label="重點分類"
+        :options="[{ value: '', label: '全部分類' }, ...categoryOptions]"
+      />
       <input
         v-model="query"
         aria-label="搜尋重點"
@@ -110,15 +118,18 @@ function edit(bookId: string, a: Annotation, field: string, event: Event) {
           {{ a.targets.map((t) => t.exact).join(" … ") }}
         </blockquote>
         <label
-          >分類<select
-            :value="a.category"
-            @change="edit(book.id, a, 'category', $event)"
-          >
-            <option v-for="(label, key) in categories" :value="key" :key="key">
-              {{ label }}
-            </option>
-          </select></label
-        >
+          >分類<ChoiceSelect
+            :model-value="a.category"
+            label="摘錄分類"
+            :options="categoryOptions"
+            @update:model-value="
+              emit('update', book.id, {
+                ...a,
+                category: $event,
+                updatedAt: Date.now(),
+              })
+            "
+        /></label>
         <label
           >標籤<input
             :value="a.tags.join('，')"

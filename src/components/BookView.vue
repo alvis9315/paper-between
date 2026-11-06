@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from "vue";
 import PageLeaf from "./PageLeaf.vue";
+import AppIcon from "./AppIcon.vue";
 import type { PaperPage, SearchHit, Annotation } from "../core/model";
 const props = defineProps<{
   pages: PaperPage[];
@@ -185,7 +186,7 @@ onBeforeUnmount(() => clearTimeout(timer));
         :disabled="index === 0 || !!turn || disabled"
         @click="move(-1)"
       >
-        <span>‹</span>
+        <AppIcon name="left" :size="18" />
       </button>
       <button
         class="page-edge edge-right"
@@ -195,7 +196,7 @@ onBeforeUnmount(() => clearTimeout(timer));
         "
         @click="move(1)"
       >
-        <span>›</span>
+        <AppIcon name="right" :size="18" />
       </button>
     </div>
   </div>

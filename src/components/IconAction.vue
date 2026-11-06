@@ -21,6 +21,7 @@ import {
 defineOptions({ inheritAttrs: false });
 const props = defineProps<{
   compact?: boolean;
+  small?: boolean;
   label: string;
   icon: Component;
   disabled?: boolean;
@@ -128,7 +129,7 @@ onBeforeUnmount(hide);
       ref="button"
       v-bind="$attrs"
       class="icon-action-button"
-      :class="{ 'danger-action': danger, compact }"
+      :class="{ 'danger-action': danger, compact, small }"
       type="button"
       :disabled="disabled"
       :aria-label="label"
@@ -279,6 +280,12 @@ onBeforeUnmount(hide);
     min-height: 36px;
     padding: 6px;
   }
+}
+.icon-action-button.small {
+  width: 30px;
+  min-height: 28px;
+  padding: 4px;
+  border-radius: 6px;
 }
 @media (prefers-reduced-motion: reduce) {
   .action-hint-enter-active,

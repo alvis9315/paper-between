@@ -173,7 +173,8 @@ test("text reading fits desktop, mobile, small height; search, jump and enlarged
     .click();
   const detail = page.getByRole("dialog", { name: "放大閱讀", exact: true });
   await expect(detail).toBeVisible();
-  await page.getByLabel("閱讀縮放").selectOption("3");
+  await page.getByRole("combobox", { name: "閱讀縮放" }).click();
+  await page.getByRole("option", { name: "300%", exact: true }).click();
   await expect
     .poll(() =>
       page
@@ -196,16 +197,14 @@ test("text reading fits desktop, mobile, small height; search, jump and enlarged
     "3",
   );
   await page.getByRole("button", { name: "我的書架", exact: true }).click();
-  const padding = await page
-    .locator("main.bookshelf-page")
-    .evaluate((el) => ({
-      main:
-        el.getBoundingClientRect().left +
-        parseFloat(getComputedStyle(el).paddingLeft),
-      header: parseFloat(
-        getComputedStyle(document.querySelector(".site-header")!).paddingLeft,
-      ),
-    }));
+  const padding = await page.locator("main.bookshelf-page").evaluate((el) => ({
+    main:
+      el.getBoundingClientRect().left +
+      parseFloat(getComputedStyle(el).paddingLeft),
+    header: parseFloat(
+      getComputedStyle(document.querySelector(".site-header")!).paddingLeft,
+    ),
+  }));
   expect(Math.abs(padding.main - padding.header)).toBeLessThan(1);
   expect(errors).toEqual([]);
 });
@@ -245,13 +244,11 @@ test("PDF fits pages and enlarged reading scrolls, navigates all pages and resto
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await page
-    .locator("#pdf-file")
-    .setInputFiles({
-      name: "reader-fixture.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfFixture(),
-    });
+  await page.locator("#pdf-file").setInputFiles({
+    name: "reader-fixture.pdf",
+    mimeType: "application/pdf",
+    buffer: pdfFixture(),
+  });
   await expect(page.locator(".book-workspace")).toHaveAttribute(
     "aria-busy",
     "false",
@@ -278,7 +275,8 @@ test("PDF fits pages and enlarged reading scrolls, navigates all pages and resto
   await expect(
     page.getByRole("dialog", { name: "放大閱讀", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("閱讀縮放").selectOption("2");
+  await page.getByRole("combobox", { name: "閱讀縮放" }).click();
+  await page.getByRole("option", { name: "200%", exact: true }).click();
   await expect
     .poll(() =>
       page

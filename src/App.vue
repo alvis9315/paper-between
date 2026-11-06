@@ -10,6 +10,7 @@ import {
   watch,
 } from "vue";
 import AppIcon from "./components/AppIcon.vue";
+import DisclosurePanel from "./components/DisclosurePanel.vue";
 import IconAction from "./components/IconAction.vue";
 const ReaderDetail = defineAsyncComponent(
   () => import("./components/ReaderDetail.vue"),
@@ -823,7 +824,7 @@ onBeforeUnmount(() => {
           >留一點時間，給閱讀。</span
         ></a
       >
-      <h1 v-if="!shelfOpen" class="reader-title" :title="title">{{ title }}</h1>
+      <h1 v-if="!shelfOpen" class="reader-title">{{ title }}</h1>
       <div
         v-if="!shelfOpen"
         class="reader-actions"
@@ -924,7 +925,6 @@ onBeforeUnmount(() => {
           class="theme-toggle"
           :aria-pressed="theme === 'dark'"
           :aria-label="theme === 'dark' ? '切換白天模式' : '切換夜間模式'"
-          :title="theme === 'dark' ? '切換白天模式' : '切換夜間模式'"
           @click="toggleTheme"
         >
           <span :class="{ active: theme === 'light' }"
@@ -1184,14 +1184,16 @@ onBeforeUnmount(() => {
         <p role="status">{{ storageStatus }}</p>
         <p>文件只留在你的裝置，閱讀進度會自動保存。</p>
         <p v-if="doc?.pdfAssetId">PDF 保留原貌；文字修改請另建圖文筆記。</p>
-        <details v-if="doc?.warnings.length" open>
-          <summary>文件提醒（{{ doc.warnings.length }}）</summary>
+        <DisclosurePanel
+          v-if="doc?.warnings.length"
+          :label="`文件提醒（${doc.warnings.length}）`"
+        >
           <ul>
             <li v-for="warning in doc.warnings" :key="warning">
               {{ warning }}
             </li>
           </ul>
-        </details>
+        </DisclosurePanel>
       </aside>
       <ReaderDetail
         v-if="detailPage !== undefined && pages[detailPage]"

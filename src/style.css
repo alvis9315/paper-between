@@ -492,14 +492,7 @@ main {
   line-height: 14px;
   letter-spacing: 1px;
 }
-.paper-footer > span:nth-child(2) {
-  font-family: Georgia, serif;
-  font-size: 12px;
-  color: var(--text-primary, #817264);
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-}
+
 .book-gutter {
   pointer-events: none;
   position: absolute;
@@ -2439,4 +2432,147 @@ body:has(.reading-mode) {
 
 .shelf-indicator:hover {
   background: transparent;
+}
+
+/* Page actions stay in the outer margin; their hover surface never covers text. */
+.page-edge,
+.single .page-edge {
+  width: 24px;
+  height: 56px;
+  top: calc(50% - 28px);
+  border-radius: 7px;
+  background: transparent;
+}
+.page-edge.edge-left {
+  left: -6px;
+}
+.page-edge.edge-right {
+  right: -6px;
+}
+.page-edge svg {
+  display: block;
+  opacity: 0.65;
+}
+.page-edge:disabled svg {
+  opacity: 0.2;
+}
+.page-edge:not(:disabled):is(:hover, :focus-visible) {
+  background: color-mix(in srgb, var(--accent) 12%, var(--paper));
+}
+.page-edge:not(:disabled):is(:hover, :focus-visible) svg {
+  opacity: 1;
+}
+.page-enlarge-action {
+  position: absolute;
+  right: 0;
+  width: 30px;
+  height: 28px;
+  display: inline-flex;
+}
+.jump-endpoints svg {
+  display: block;
+  flex-shrink: 0;
+}
+.detail-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+}
+.detail-zoom {
+  grid-column: 1;
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+}
+.detail-zoom .choice-select {
+  max-width: 100%;
+}
+.detail-navigation {
+  grid-column: 2;
+  justify-self: center;
+  white-space: nowrap;
+}
+.detail-toolbar > button {
+  grid-column: 3;
+  justify-self: end;
+}
+.reader-info .disclosure-content ul {
+  padding-left: 20px;
+}
+input:is([type="checkbox"], [type="radio"]) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--field);
+  vertical-align: middle;
+  cursor: pointer;
+}
+input[type="radio"] {
+  border-radius: 50%;
+}
+input:is([type="checkbox"], [type="radio"]):checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  display: block;
+  width: 5px;
+  height: 8px;
+  border: solid var(--on-accent);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-1px) rotate(45deg);
+}
+input[type="radio"]:checked::after {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--on-accent);
+}
+input:is([type="checkbox"], [type="radio"]):disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (max-width: 480px) {
+  .detail-toolbar {
+    gap: 4px;
+    padding: 8px;
+  }
+  .detail-navigation {
+    gap: 2px;
+  }
+  .detail-navigation .icon-button {
+    width: 30px;
+  }
+  .detail-navigation span {
+    font-size: 12px;
+  }
+}
+.loading-overlay progress {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+.loading-overlay progress::-webkit-progress-bar {
+  background: var(--border);
+  border-radius: 999px;
+}
+.loading-overlay progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 999px;
+}
+.loading-overlay progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: 999px;
 }

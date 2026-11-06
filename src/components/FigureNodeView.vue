@@ -3,7 +3,10 @@ import { NodeViewWrapper, NodeViewContent, nodeViewProps } from "@tiptap/vue-3";
 import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 import { mediaUrl } from "../core/media";
 import { imageLayoutStyle } from "../core/imageLayout";
+import ChoiceSelect from "./ChoiceSelect.vue";
 import AppIcon from "./AppIcon.vue";
+import IconAction from "./IconAction.vue";
+import { X } from "@lucide/vue";
 const props = defineProps(nodeViewProps);
 const src = ref("");
 const error = ref("");
@@ -91,17 +94,15 @@ function move(direction: number) {
     <div class="figure-group-heading" contenteditable="false">
       <span
         >圖文 {{ groupNumber }}<small>每組圖片都有自己的對應文字</small></span
-      ><button
-        class="remove-figure"
-        type="button"
+      ><IconAction
+        compact
+        :icon="X"
+        label="刪除此圖文區塊"
         :disabled="!editor.isEditable"
-        aria-label="刪除此圖文區塊"
-        title="刪除此圖文區塊"
+        danger
         @mousedown.prevent
         @click="deleteNode()"
-      >
-        <AppIcon name="close" :size="18" />
-      </button>
+      />
     </div>
     <div ref="target" class="editor-image-side" contenteditable="false">
       <div
@@ -135,18 +136,16 @@ function move(direction: number) {
           "
       /></label>
       <div class="figure-actions">
-        <select
-          :value="node.attrs.layout"
-          aria-label="圖文版型"
-          @change="
-            updateAttributes({
-              layout: ($event.target as HTMLSelectElement).value,
-            })
-          "
-        >
-          <option value="side">左圖右文</option>
-          <option value="stacked">上圖下文</option></select
-        ><button type="button" @click="move(-1)">上移</button
+        <ChoiceSelect
+          :model-value="String(node.attrs.layout)"
+          label="圖文版型"
+          :options="[
+            { value: 'side', label: '左圖右文' },
+            { value: 'stacked', label: '上圖下文' },
+          ]"
+          :disabled="!editor.isEditable"
+          @update:model-value="updateAttributes({ layout: $event })"
+        /><button type="button" @click="move(-1)">上移</button
         ><button type="button" @click="move(1)">下移</button>
       </div>
     </div>
