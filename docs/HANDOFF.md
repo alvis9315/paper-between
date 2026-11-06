@@ -4,7 +4,7 @@
 
 ## 目前接續位置
 
-本輪先保存產品策略到 [PRODUCT-STRATEGY.md](PRODUCT-STRATEGY.md)，再修正實際 PDF 還原 Word 的版面崩壞。1.7.1 build、23 情境 × Chrome／WebKit 共 46 個執行個案與 diff 檢查通過；正在 push／部署，下面的最新部署紀錄須補回終態。
+本輪先保存產品策略到 [PRODUCT-STRATEGY.md](PRODUCT-STRATEGY.md)，再修正實際 PDF 還原 Word 的版面崩壞。1.7.1 build、23 情境 × Chrome／WebKit 共 46 個執行個案與 diff 檢查通過，GitHub 同步及 Sites 版本 14 部署成功。
 
 - Word：`core/docx.worker.ts` 分流一般段落／定位圖文；`core/fixedWord.ts` 用文件自己的座標、圖片及嵌入字型建立本機原頁 PDF，`importer.ts` 接回原頁閱讀。考題維持 22 頁、總複習 14 頁，可搜尋、選字、註記、放大及 ZIP。
 - 支援範圍見 [WORD-IMPORT.md](WORD-IMPORT.md)，不是通用 Word 排版引擎。遇到混合流式／不支援圖形不回退到攤平；保留舊書架並引導 PDF。舊版碎筆記沒有原 Word，須重新匯入，不自行刪除舊本。
@@ -27,7 +27,16 @@
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
 
-### 最新部署：1.7.0
+### 最新部署：1.7.1
+
+- 原始碼版本：1.7.1；Sites 版本：14。
+- 部署來源 commit：`ac8d26d0e19e07c9bf527f7fb64b4cc5e75868d4`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_be6a28c1aea08191923a3738bb48a4c9`
+- deployment_id：`appgdep_6aede976e7288191b804831060c01b83`
+- 結果：`succeeded`，2026-11-06 22:51（Asia/Taipei）。
+- 後續純文件 commit 回填證據，不改變實際部署來源。
+
+### 先前部署：1.7.0
 
 - 原始碼版本：1.7.0；Sites 版本：13。
 - 部署來源 commit：`b18629450e37a81c20260ca66737ba7b573dd337`（與本輪 GitHub 程式版本一致）。
@@ -144,7 +153,7 @@ Playwright 會自行啟動 4112 的 dev server；若該 port 已有服務，確�
 
 ## 突然做到一半時，更新這一節
 
-1.7.1 Word 修正、策略文件、build／46 個跨引擎執行個案／diff 檢查已完成，正在 push／部署並回填結果。原 PDF／Word 已取得並跨引擎對照；實體 Safari 26.0.1 仍待確認。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
+1.7.1 Word 修正、策略文件、build／46 個跨引擎執行個案／diff 檢查、GitHub 同步及部署已完成。沒有未完成的本輪程式工作。原 PDF／Word 已取得並跨引擎對照；實體 Safari 26.0.1 仍待確認。下一輪中斷時用實際狀態取代本段，並同步 STATUS：
 
 ```text
 更新時間：YYYY-MM-DD HH:mm Asia/Taipei

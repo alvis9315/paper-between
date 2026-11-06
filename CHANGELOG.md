@@ -14,7 +14,7 @@
 - 不支援的浮動版面明確引導匯出 PDF，不默默產生破碎筆記；匯入失敗保留原書架。
 - 保存產品定位、官方競品、黏著度與下一步驗證建議到 `docs/PRODUCT-STRATEGY.md`，明確區分建議與已提供能力。
 - 新增合成 Word 回歸情境；實際兩組 PDF／Word 已於 Chrome、WebKit 對照，維持 22／14 頁，未把私人教材提交到 GitHub。
-- build、23 情境跨 Chrome／WebKit 的 46 個執行個案與 diff 檢查通過；部署終態及來源見 STATUS／交接。
+- build、23 情境跨 Chrome／WebKit 的 46 個執行個案與 diff 檢查通過；已部署既有 Site（Sites 版本 14，succeeded），來源及部署 ID 見 STATUS／交接。
 
 ## 1.7.0 — 2026-11-06
 
