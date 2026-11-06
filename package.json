@@ -1,7 +1,7 @@
 {
   "name": "paper-between-notebook",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -11,17 +11,24 @@
     "test": "playwright test"
   },
   "dependencies": {
-    "vue": "3.5.44",
-    "mammoth": "1.13.0",
+    "@floating-ui/dom": "^1.7.6",
+    "@tiptap/core": "^3.33.0",
+    "@tiptap/extension-table": "^3.33.0",
+    "@tiptap/pm": "^3.33.0",
+    "@tiptap/starter-kit": "^3.33.0",
+    "@tiptap/vue-3": "^3.33.0",
     "dompurify": "3.4.17",
-    "fflate": "0.8.3"
+    "fflate": "0.8.3",
+    "mammoth": "1.13.0",
+    "pdfjs-dist": "^6.5.438",
+    "vue": "3.5.44"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "6.0.10",
-    "vite": "8.3.6",
-    "typescript": "~5.9.3",
-    "vue-tsc": "3.3.14",
     "@playwright/test": "1.64.1",
-    "@types/node": "^22.15.0"
+    "@types/node": "^22.15.0",
+    "@vitejs/plugin-vue": "6.0.10",
+    "typescript": "~5.9.3",
+    "vite": "8.3.6",
+    "vue-tsc": "3.3.14"
   }
 }

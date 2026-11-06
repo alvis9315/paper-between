@@ -13,6 +13,8 @@ export function notebookHtml(doc: Notebook): string {
   for (const block of doc.blocks) {
     const holder = document.createElement("div");
     holder.innerHTML = block.html;
+    const stable = holder.firstElementChild as HTMLElement | null;
+    if (stable) stable.dataset.blockId = block.id;
     if (block.kind === "row") {
       lists.length = 0;
       if (!currentTable || tableId !== block.tableId) {
@@ -22,6 +24,7 @@ export function notebookHtml(doc: Notebook): string {
       }
       const row = holder.querySelector("tr");
       if (row) {
+        (row as HTMLElement).dataset.blockId = block.id;
         const group = document.createElement(
           block.headerOnly ? "thead" : "tbody",
         );
@@ -61,6 +64,7 @@ export function notebookHtml(doc: Notebook): string {
           lists[depth - 1] = current;
         }
         const li = document.createElement("li");
+        li.dataset.blockId = block.id;
         li.innerHTML = item?.innerHTML || "";
         current.list.append(li);
         current.last = li;

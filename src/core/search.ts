@@ -38,7 +38,11 @@ export function highlightPage(
     const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT);
     const nodes: Text[] = [];
     while (walker.nextNode())
-      if (!walker.currentNode.parentElement?.closest("[data-repeat]"))
+      if (
+        !walker.currentNode.parentElement?.closest(
+          "[data-repeat],[data-decoration]",
+        )
+      )
         nodes.push(walker.currentNode as Text);
     for (const node of nodes) {
       const value = node.data;

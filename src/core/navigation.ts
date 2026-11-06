@@ -9,7 +9,8 @@ export function pageForAnchor(
       if (
         f.blockId === anchor.blockId &&
         anchor.offset >= f.start &&
-        anchor.offset < f.end
+        (anchor.offset < f.end ||
+          (f.start === f.end && anchor.offset === f.start))
       )
         return page.index;
   const last = pages.findLast((p) =>

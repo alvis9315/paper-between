@@ -1,18 +1,7 @@
 ﻿import type { BookRecord, LibraryState, SavedState } from "./model";
 import { createRecord } from "./library";
-async function database(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("paper-between", 1);
-    request.onupgradeneeded = () =>
-      request.result.createObjectStore("notebook");
-    request.onsuccess = () => {
-      request.result.onversionchange = () => request.result.close();
-      resolve(request.result);
-    };
-    request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error("本機儲存被其他分頁占用"));
-  });
-}
+import { database } from "./database";
+import { mediaIds, pendingMedia } from "./media";
 export async function loadLibrary(): Promise<LibraryState> {
   const db = await database();
   try {
@@ -80,7 +69,14 @@ export async function saveLibrary(
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction("notebook", "readwrite");
       const store = tx.objectStore("notebook");
+      const writtenMedia: string[] = [];
       try {
+        const ids = new Set(state.books.flatMap((b) => mediaIds(b.document)));
+        for (const [id, asset] of pendingMedia)
+          if (ids.has(id)) {
+            store.put(asset, `media:${id}`);
+            writtenMedia.push(id);
+          }
         for (const book of state.books)
           if (!changedIds || changedIds.includes(book.document.id))
             store.put(structuredClone(book), `book:${book.document.id}`);
@@ -108,7 +104,10 @@ export async function saveLibrary(
         tx.abort();
         reject(e);
       }
-      tx.oncomplete = () => resolve();
+      tx.oncomplete = () => {
+        writtenMedia.forEach((id) => pendingMedia.delete(id));
+        resolve();
+      };
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
     });

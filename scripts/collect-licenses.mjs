@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
@@ -7,6 +7,7 @@ const parts = [
 ];
 for (const [location, pkg] of Object.entries(lock.packages)) {
   if (!location || pkg.dev) continue;
+  if (pkg.optional && !existsSync(join(location, "package.json"))) continue;
   const meta = JSON.parse(readFileSync(join(location, "package.json"), "utf8"));
   const licenses = readdirSync(location).filter((name) =>
     /^(licen[sc]e|copying|notice)([.-]|$)/i.test(name),

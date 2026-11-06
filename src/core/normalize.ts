@@ -30,6 +30,9 @@ const allowed = [
   "blockquote",
   "sup",
   "sub",
+  "figure",
+  "figcaption",
+  "div",
 ];
 export function normalizeHtml(
   html: string,
@@ -38,7 +41,19 @@ export function normalizeHtml(
 ): Notebook {
   const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: allowed,
-    ALLOWED_ATTR: ["href", "start", "colspan", "rowspan"],
+    ALLOWED_ATTR: [
+      "href",
+      "start",
+      "colspan",
+      "rowspan",
+      "data-block-id",
+      "data-media-id",
+      "data-width",
+      "data-height",
+      "data-layout",
+      "data-alt",
+      "data-figure-body",
+    ],
     ALLOW_DATA_ATTR: false,
   });
   const root = document.createElement("div");
@@ -59,23 +74,56 @@ export function normalizeHtml(
   });
   const blocks: Block[] = [];
   const id = crypto.randomUUID();
+  const usedIds = new Set<string>();
   function add(
     el: HTMLElement,
     kind: Block["kind"],
     extra: Partial<Block> = {},
   ) {
-    if (!el.textContent?.trim()) return;
+    if (!el.textContent?.trim() && kind !== "figure") return;
+    const requested = extra.id || el.dataset.blockId;
+    const blockId =
+      requested &&
+      /^[A-Za-z0-9_-]{1,180}$/.test(requested) &&
+      !usedIds.has(requested)
+        ? requested
+        : `${id}-${blocks.length}`;
+    usedIds.add(blockId);
     blocks.push({
-      id: `${id}-${blocks.length}`,
       kind,
       html: el.outerHTML,
       text: el.textContent,
       ...extra,
+      id: blockId,
     });
   }
   function visit(el: HTMLElement, depth = 0, ordered = false, number = 1) {
     const tag = el.tagName.toLowerCase();
-    if (/^h[1-6]$/.test(tag)) add(el, "heading", { level: Number(tag[1]) });
+    if (tag === "figure") {
+      const mediaId = el.dataset.mediaId || "";
+      const width = Number(el.dataset.width);
+      const height = Number(el.dataset.height);
+      if (
+        !/^m-[a-f0-9]{64}$/.test(mediaId) ||
+        !Number.isFinite(width) ||
+        !Number.isFinite(height) ||
+        width < 1 ||
+        height < 1 ||
+        width > 2000 ||
+        height > 2000
+      )
+        throw new Error("圖文區塊缺少有效的圖片資料，請重新選擇圖片。");
+      add(el, "figure", {
+        image: {
+          mediaId,
+          width,
+          height,
+          alt: el.dataset.alt || "筆記圖片",
+          layout: el.dataset.layout === "stacked" ? "stacked" : "side",
+        },
+      });
+    } else if (/^h[1-6]$/.test(tag))
+      add(el, "heading", { level: Number(tag[1]) });
     else if (tag === "ul" || tag === "ol") {
       let n = Number(el.getAttribute("start") || 1);
       for (const child of [...el.children])
@@ -88,7 +136,7 @@ export function normalizeHtml(
       p.dataset.marker = ordered ? `${number}.` : "•";
       p.style.setProperty("--indent", String(Math.min(depth, 5)));
       p.innerHTML = copy.innerHTML;
-      add(p, "list");
+      add(p, "list", { id: el.dataset.blockId });
       for (const child of [...el.children])
         if (/^(UL|OL)$/.test(child.tagName)) visit(child as HTMLElement, depth);
     } else if (tag === "table") {
@@ -111,6 +159,7 @@ export function normalizeHtml(
           tableId,
           header,
           headerOnly: hasHeader && i === 0,
+          id: (row as HTMLElement).dataset.blockId,
         });
       });
     } else if (["p", "blockquote"].includes(tag)) add(el, "paragraph");

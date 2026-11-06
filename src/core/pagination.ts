@@ -9,6 +9,34 @@ export function fragmentHtml(
   repeat: boolean,
 ): string {
   let html = sliceHtml(block.html, start, end);
+  if (block.image) {
+    const root = document.createElement("div");
+    root.innerHTML = html;
+    const figure = root.querySelector("figure")!;
+    figure.className = `image-note layout-${block.image.layout}${start ? " figure-continuation" : ""}`;
+    if (!start) {
+      const frame = document.createElement("div");
+      frame.className = "note-image-frame";
+      frame.dataset.decoration = "true";
+      frame.style.setProperty(
+        "--image-ratio",
+        `${block.image.width}/${block.image.height}`,
+      );
+      const img = document.createElement("img");
+      img.dataset.mediaId = block.image.mediaId;
+      img.alt = block.image.alt;
+      img.width = block.image.width;
+      img.height = block.image.height;
+      img.loading = "lazy";
+      img.decoding = "async";
+      frame.append(img);
+      figure.prepend(frame);
+    }
+    figure
+      .querySelector<HTMLElement>("[data-figure-body]")
+      ?.classList.add("figure-body");
+    html = root.innerHTML;
+  }
   if (repeat && block.header && !block.headerOnly)
     html = html.replace(
       "<tbody>",

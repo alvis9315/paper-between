@@ -19,8 +19,9 @@ self.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
       throw new Error("這不是有效的 Word .docx 文件。");
     const xml = strFromU8(files["word/document.xml"]);
     const warnings: string[] = [];
-    if (/<(?:w:drawing|w:pict|w:object)\b/.test(xml))
-      warnings.push("圖片、圖表及嵌入物件已略過。");
+    const images: { id: string; buffer: ArrayBuffer; mime: string }[] = [];
+    if (/<(?:w:pict|w:object)\b/.test(xml))
+      warnings.push("舊式繪圖與嵌入物件可能無法完整保留。");
     if (/<w:txbxContent\b/.test(xml))
       warnings.push("文字方塊的內容可能無法完整保留，請改用一般段落。");
     if (/<(?:m:oMath|w:altChunk)\b/.test(xml))
@@ -45,7 +46,17 @@ self.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
           "p[style-name='標題 2'] => h2:fresh",
           "p[style-name='標題 3'] => h3:fresh",
         ],
-        convertImage: mammoth.images.imgElement(async () => ({ src: "" })),
+        convertImage: mammoth.images.imgElement(async (image) => {
+          if (images.length >= 50)
+            throw new Error("每本最多 50 張圖片，請拆分 Word 文件。");
+          const id = crypto.randomUUID();
+          images.push({
+            id,
+            buffer: await image.readAsArrayBuffer(),
+            mime: image.contentType,
+          });
+          return { src: `paper-media:${id}` };
+        }),
       },
     );
     if (result.messages.length)
@@ -54,7 +65,7 @@ self.onmessage = async (event: MessageEvent<ArrayBuffer>) => {
       );
     if (result.value.length > 4_000_000)
       throw new Error("解析後內容過大，請拆分成較小的文件。");
-    self.postMessage({ html: result.value, warnings });
+    self.postMessage({ html: result.value, warnings, images });
   } catch (error) {
     self.postMessage({
       error:

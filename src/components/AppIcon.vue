@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{ name: string; size?: number }>();
 const paths: Record<string, string[]> = {
+  image: ["M3 3h18v18H3z", "m3 16 5-5 4 4 3-3 6 6", "M15 7h.01"],
   download: ["M12 3v12", "m7 10 5 5 5-5", "M4 17v4h16v-4"],
   restore: ["M3 11a9 9 0 1 1 3 8", "M3 4v7h7", "M12 7v5l3 2"],
   edit: ["M12 20h9", "M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"],

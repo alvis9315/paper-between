@@ -27,6 +27,8 @@ import {
   progressForAnchor,
 } from "./core/library";
 import { exportBackup, importBackup } from "./core/backup";
+import { createBundle, readBundle } from "./core/backupBundle";
+import { validateBookMedia, cleanupPending } from "./core/media";
 import type {
   Anchor,
   Notebook,
@@ -50,6 +52,7 @@ const helpOpen = ref(false);
 const textOpen = ref(false);
 const shelfOpen = ref(false);
 const editorOpen = ref(false);
+const richNew = ref(false);
 const books = shallowRef<BookRecord[]>([]);
 const activeId = ref<string>();
 const backupInput = ref<HTMLInputElement>();
@@ -140,6 +143,7 @@ async function layout(candidate?: Notebook, anchor?: Anchor) {
   layingOut.value = true;
   progress.value = 0;
   try {
+    await validateBookMedia(source);
     const result = await paginate(source, nextSize, run.signal, (n) => {
       if (!run.signal.aborted) progress.value = n;
     });
@@ -311,18 +315,14 @@ function restoreBook(id: string) {
   queueSave();
   notify("筆記已還原到書架。");
 }
-function downloadBackup() {
+async function downloadBackup() {
   try {
     captureCurrent();
-    const data = exportBackup(books.value);
-    if (new Blob([data]).size > 50 * 1024 * 1024)
-      throw new Error("書架超過單份備份 50MB 上限，請先減少大型文件。");
-    const url = URL.createObjectURL(
-      new Blob([data], { type: "application/json" }),
-    );
+    const data = await createBundle(books.value);
+    const url = URL.createObjectURL(data);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `紙間書架備份-${new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Taipei" }).format(new Date())}.json`;
+    a.download = `紙間書架備份-${new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Taipei" }).format(new Date())}.zip`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     notify("書架備份已下載，包含回收桶與閱讀位置。");
@@ -335,9 +335,7 @@ async function restoreBackupFile(e: Event) {
   const file = input.files?.[0];
   if (!file || busy.value) return;
   try {
-    if (file.size > 50 * 1024 * 1024)
-      throw new Error("備份超過 50MB，請選擇較小的紙間備份。");
-    const restored = importBackup(await file.text());
+    const restored = await readBundle(file);
     books.value = [...books.value, ...restored];
     restored.forEach((b) => dirtyIds.add(b.document.id));
     queueSave();
@@ -642,7 +640,7 @@ onBeforeUnmount(() => {
       id="backup-file"
       class="visually-hidden"
       type="file"
-      accept=".json,application/json"
+      accept=".zip,.json,application/zip,application/json"
       aria-label="選擇書架備份"
       @change="restoreBackupFile"
     />
@@ -680,9 +678,22 @@ onBeforeUnmount(() => {
           <button
             class="toolbar-button edit-current-button"
             :disabled="busy || turning || !doc"
-            @click="editorOpen = true"
+            @click="
+              richNew = false;
+              editorOpen = true;
+            "
           >
             <AppIcon name="edit" :size="16" />編輯
+          </button>
+          <button
+            class="toolbar-button text-entry-button"
+            :disabled="busy || turning"
+            @click="
+              richNew = true;
+              editorOpen = true;
+            "
+          >
+            <AppIcon name="image" :size="17" />圖文筆記
           </button>
           <button
             class="toolbar-button text-entry-button"
@@ -862,8 +873,11 @@ onBeforeUnmount(() => {
     </footer>
     <NotebookEditor
       :open="editorOpen"
-      :document="doc"
-      @close="editorOpen = false"
+      :document="richNew ? undefined : doc"
+      @close="
+        editorOpen = false;
+        cleanupPending(books.map((b) => b.document));
+      "
       @save="saveEdited"
     />
     <TextEntryDialog

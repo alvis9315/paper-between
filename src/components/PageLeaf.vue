@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
+import { mediaUrl } from "../core/media";
 import type { PaperPage, SearchHit } from "../core/model";
 import { highlightPage } from "../core/search";
 const props = defineProps<{
@@ -10,12 +11,35 @@ const props = defineProps<{
   highlight?: boolean;
   side?: string;
 }>();
+const content = ref<HTMLElement>();
 const html = computed(() =>
   highlightPage(
     props.page?.fragments.map((f) => f.html).join("") || "",
     props.hits,
     props.activeHit,
   ),
+);
+watch(
+  html,
+  async () => {
+    await nextTick();
+    const host = content.value;
+    if (!host) return;
+    for (const img of host.querySelectorAll<HTMLImageElement>(
+      "img[data-media-id]",
+    )) {
+      try {
+        const url = await mediaUrl(img.dataset.mediaId!);
+        if (img.isConnected) img.src = url;
+      } catch {
+        if (img.isConnected) {
+          img.alt = "圖片遺失，請重新匯入備份";
+          img.parentElement?.classList.add("image-missing");
+        }
+      }
+    }
+  },
+  { immediate: true },
 );
 </script>
 <template>
@@ -28,7 +52,7 @@ const html = computed(() =>
     <div class="page-running-title" aria-hidden="true">
       {{ page ? title : "" }}
     </div>
-    <div class="page-content" v-html="html"></div>
+    <div ref="content" class="page-content" v-html="html"></div>
     <footer class="paper-footer">
       <span>{{ page ? "紙 間" : "" }}</span
       ><span>{{ page ? String(page.index + 1).padStart(2, "0") : "" }}</span
