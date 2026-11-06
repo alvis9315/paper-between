@@ -4,7 +4,7 @@
 
 ## 目前接續位置
 
-本輪修正從筆記建立小卡只用「考題」檔名當標籤。1.8.1 build、完整 29 情境 × Chrome／WebKit 共 58 個執行個案與 diff 檢查通過，正在同步 GitHub／Sites；先前成功部署為 1.8.0，下方保留歷史證據。
+本輪修正從筆記建立小卡只用「考題」檔名當標籤。1.8.1 build、完整 29 情境 × Chrome／WebKit 共 58 個執行個案與 diff 檢查通過，GitHub 同步及 Sites 版本 16 部署成功，沒有未完成的本輪程式工作。
 
 - `core/cardTopics.ts` 讀 PDF 字級／座標合併標題，跨頁樣式過濾圖表標籤；依內容／原頁位置分類，無線索用重複縮寫或留空，不使用私人題庫／固定科目詞庫。固定 Word 共用 PDF 路徑；一般 Word 仍依 heading。
 - `StudyCards.vue` 生成／舊卡修復接到分類；初次掛載修復只有檔名／空標籤的舊自動卡，生成面板可手動更新自動分類。App 僅批次寫 tags／topicOrigin，不替換卡片正文／ID／sourceKey／收藏；手動標籤與 HTML 原分類排除。解析原檔失敗不部分加入／更新。
@@ -39,7 +39,16 @@
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
 
-### 最新部署：1.8.0
+### 最新部署：1.8.1
+
+- 原始碼版本：1.8.1；Sites 版本：16。
+- 部署來源 commit：`d0ea9e9555be69f1f29ad82d8e09c371302d124a`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_784bcbaece8081918a96a43f6c88d007`
+- deployment_id：`appgdep_6aee18c236e48191ab075a87a579199e`
+- 結果：`succeeded`，2026-11-07 02:13（Asia/Taipei）。
+- 後續純文件 commit 回填證據，不改變實際部署來源。
+
+### 先前部署：1.8.0
 
 - 原始碼版本：1.8.0；Sites 版本：15。
 - 部署來源 commit：`47f4c0747311462378bb572b59ea0f3c4dc3b78b`（與本輪 GitHub 程式版本一致）。

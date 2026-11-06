@@ -33,11 +33,11 @@ tags:
 
 ## 正在進行
 
-1.8.1 主題分類修正、build、完整 58 個跨引擎回歸個案及 diff 檢查通過；正在同步 GitHub／Sites，最後一次成功部署仍為下方 1.8.0。
+1.8.1 主題分類修正、build、完整 58 個跨引擎回歸個案及 diff 檢查通過，已同步 GitHub，Sites 版本 16 部署成功。沒有未完成的本輪程式工作。
 
 ## 下一個明確動作
 
-同步 1.8.1 GitHub／既有 Sites，回填部署證據。重新整理線上小卡頁後會自動修復舊檔名分類；需來源原檔仍在同一瀏覽器。實體 Safari 26.0.1 仍待確認。
+重新整理線上考前小卡，確認自動更新舊檔名分類；需來源原檔仍在同一瀏覽器。後續依實測校正分類品質，實體 Safari 26.0.1 仍待確認。
 
 ## 最新驗證
 
@@ -62,7 +62,16 @@ tags:
 - 網址：https://paper-between-alvis9315.javacj02004.chatgpt.site
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 
-### 最新：1.8.0
+### 最新：1.8.1
+
+- 原始碼版本：1.8.1；Sites 版本：16。
+- 部署來源 commit：`d0ea9e9555be69f1f29ad82d8e09c371302d124a`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_784bcbaece8081918a96a43f6c88d007`
+- deployment_id：`appgdep_6aee18c236e48191ab075a87a579199e`
+- 結果：`succeeded`，2026-11-07 02:13（Asia/Taipei）。
+- 後續純文件 commit 回填證據，不改變實際部署來源。
+
+### 歷史：1.8.0
 
 - 原始碼版本：1.8.0；Sites 版本：15。
 - 部署來源 commit：`47f4c0747311462378bb572b59ea0f3c4dc3b78b`（與本輪 GitHub 程式版本一致）。
