@@ -4,7 +4,7 @@
 
 ## 目前接續位置
 
-本輪新增卡組管理層；卡組內保留原搜尋／標籤／閱讀。1.9.0 build、33 情境 × Chrome／WebKit 共 66 個執行個案與 diff 檢查通過，正在同步 GitHub／Sites，線上仍是下方 1.8.1。
+本輪新增卡組管理層；卡組內保留原搜尋／標籤／閱讀。1.9.0 build、33 情境 × Chrome／WebKit 共 66 個執行個案與 diff 檢查通過，GitHub 同步及 Sites 版本 17 部署成功，沒有未完成的本輪程式工作。
 
 - `StudyDecks.vue`：卡組首頁、名稱搜尋／新增／改名／刪除確認；App 的 reviewDecks／activeDeckId 管理組別，進入後只傳該組 cards 給 StudyCards。移動只改 deckId；標籤、內容、收藏與 sourceKey 保留。相同來源允許在不同卡組建卡，同組去重。
 - `core/reviewDecks.ts`：舊平放資料完整整理至一組「我的小卡」，不依來源或標籤拆組；新卡組不是來源檔名／主題標籤。`storage.ts` 保存 metadata，`backupBundle.ts` 支援空卡組、舊格式、全量歸屬驗證及 ID 重映射。
@@ -45,7 +45,16 @@
 - project_id：`appgprj_6aed516760108191a427a46f6b0e34a7`
 - 現有存取範圍：public；保留既有範圍，不自行改權限。
 
-### 最新部署：1.8.1
+### 最新部署：1.9.0
+
+- 原始碼版本：1.9.0；Sites 版本：17。
+- 部署來源 commit：`ef52569308600a70ad47e794d7720dbc340b48a3`（與本輪 GitHub 程式版本一致）。
+- version_id：`appgprj_6aed516760108191a427a46f6b0e34a7~appgver_836ed59213808191994efc4ef06e4475`
+- deployment_id：`appgdep_6aee80054c448191851f01e7c1e495a5`
+- 結果：`succeeded`，2026-11-07 09:34（Asia/Taipei）。
+- 後續純文件 commit 回填證據，不改變實際部署來源。
+
+### 先前部署：1.8.1
 
 - 原始碼版本：1.8.1；Sites 版本：16。
 - 部署來源 commit：`d0ea9e9555be69f1f29ad82d8e09c371302d124a`（與本輪 GitHub 程式版本一致）。
