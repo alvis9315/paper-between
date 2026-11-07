@@ -37,6 +37,8 @@ import BookView from "./components/BookView.vue";
 import PaginationBar from "./components/PaginationBar.vue";
 import TextEntryDialog from "./components/TextEntryDialog.vue";
 import Bookshelf from "./components/Bookshelf.vue";
+import StudyDecks from "./components/StudyDecks.vue";
+import { newReviewDeck, MAX_REVIEW_DECKS } from "./core/reviewDecks";
 import { cardsFromBook, MAX_REVIEW_CARDS } from "./core/reviewCards";
 const ReflowDialog = defineAsyncComponent(
   () => import("./components/ReflowDialog.vue"),
@@ -78,6 +80,7 @@ import type {
   Annotation,
   AnnotationTarget,
   ReviewCard,
+  ReviewDeck,
 } from "./core/model";
 
 const doc = shallowRef<Notebook>();
@@ -122,7 +125,48 @@ const textOpen = ref(false);
 const shelfOpen = ref(false);
 const libraryView = ref<"books" | "cards">("books");
 const reviewCards = shallowRef<ReviewCard[]>([]);
+const reviewDecks = shallowRef<ReviewDeck[]>([]);
+const activeDeckId = ref("");
+const importDeckId = ref("");
+const activeDeck = computed(() =>
+  reviewDecks.value.find((d) => d.id === activeDeckId.value),
+);
+const deckCards = computed(() =>
+  reviewCards.value.filter((c) => c.deckId === activeDeckId.value),
+);
+function createDeck(title: string) {
+  if (reviewDecks.value.length >= MAX_REVIEW_DECKS || !title.trim()) return;
+  const deck = newReviewDeck(title);
+  reviewDecks.value = [...reviewDecks.value, deck];
+  activeDeckId.value = deck.id;
+  queueSave();
+}
+function renameDeck(id: string, title: string) {
+  reviewDecks.value = reviewDecks.value.map((d) =>
+    d.id === id
+      ? { ...d, title: title.trim().slice(0, 120), updatedAt: Date.now() }
+      : d,
+  );
+  queueSave();
+}
+function removeDeck(id: string) {
+  reviewCards.value = reviewCards.value.filter((c) => c.deckId !== id);
+  reviewDecks.value = reviewDecks.value.filter((d) => d.id !== id);
+  if (activeDeckId.value === id) activeDeckId.value = "";
+  queueSave();
+}
+function moveCards(ids: string[], deckId: string) {
+  if (!reviewDecks.value.some((d) => d.id === deckId)) return;
+  const selected = new Set(ids);
+  reviewCards.value = reviewCards.value.map((c) =>
+    selected.has(c.id) && c.deckId === activeDeckId.value
+      ? { ...c, deckId, updatedAt: Date.now() }
+      : c,
+  );
+  queueSave();
+}
 const cardImport = ref(false);
+const cardWorking = ref(false);
 function showCards() {
   if (busy.value || turning.value) return;
   readerMenuOpen.value = false;
@@ -130,11 +174,20 @@ function showCards() {
   captureCurrent();
   queueSave();
   libraryView.value = "cards";
+  activeDeckId.value = "";
   shelfOpen.value = true;
 }
-function addReviewCards(cards: ReviewCard[]) {
+function addReviewCards(cards: ReviewCard[], targetId = activeDeckId.value) {
+  if (!reviewDecks.value.some((d) => d.id === targetId)) {
+    notify("原卡組已不存在，這次未加入小卡；請選擇卡組後重新匯入。", true);
+    return;
+  }
+  cards = cards.map((c) => ({ ...c, deckId: targetId }));
   const keys = new Set(
-    reviewCards.value.map((c) => c.sourceKey).filter(Boolean),
+    reviewCards.value
+      .filter((c) => c.deckId === targetId)
+      .map((c) => c.sourceKey)
+      .filter(Boolean),
   );
   const fresh = cards.filter((c) => {
     if (!c.sourceKey) return true;
@@ -148,7 +201,11 @@ function addReviewCards(cards: ReviewCard[]) {
   }
   reviewCards.value = [...reviewCards.value, ...fresh];
   queueSave();
-  if (libraryView.value === "cards" && fresh.length) {
+  if (
+    libraryView.value === "cards" &&
+    targetId === activeDeckId.value &&
+    fresh.length
+  ) {
     toast.value = "";
     return;
   }
@@ -159,7 +216,10 @@ function addReviewCards(cards: ReviewCard[]) {
   );
 }
 function saveReviewCard(card: ReviewCard) {
-  if (!reviewCards.value.some((c) => c.id === card.id)) addReviewCards([card]);
+  if (!reviewDecks.value.some((d) => d.id === card.deckId))
+    card = { ...card, deckId: activeDeckId.value };
+  if (!reviewCards.value.some((c) => c.id === card.id))
+    addReviewCards([card], card.deckId);
   else {
     reviewCards.value = reviewCards.value.map((c) =>
       c.id === card.id ? card : c,
@@ -188,6 +248,7 @@ function removeReviewCard(id: string) {
 }
 function importForCards(kind: "pdf" | "word") {
   cardImport.value = true;
+  importDeckId.value = activeDeckId.value;
   (kind === "pdf" ? pdfInput.value : fileInput.value)?.click();
 }
 
@@ -231,7 +292,9 @@ let pendingNavigationAnchor: Anchor | undefined;
 let savedVersion = 0;
 let pendingDocument: Notebook | undefined;
 let pendingImportMessage: string | undefined;
-const busy = computed(() => layingOut.value || parsing.value);
+const busy = computed(
+  () => layingOut.value || parsing.value || cardWorking.value,
+);
 const hits = computed(() =>
   doc.value ? searchDocument(doc.value, debouncedQuery.value, pages.value) : [],
 );
@@ -387,6 +450,7 @@ async function persist() {
     books: books.value,
     activeId: activeId.value,
     reviewCards: reviewCards.value,
+    reviewDecks: reviewDecks.value,
   };
   const ids = [...dirtyIds];
   const version = savedVersion;
@@ -478,6 +542,13 @@ async function downloadBackup(id?: string) {
       id
         ? reviewCards.value.filter((c) => c.sourceBookId === id)
         : reviewCards.value,
+      id
+        ? reviewDecks.value.filter((d) =>
+            reviewCards.value.some(
+              (c) => c.deckId === d.id && c.sourceBookId === id,
+            ),
+          )
+        : reviewDecks.value,
     );
     const url = URL.createObjectURL(data);
     const a = document.createElement("a");
@@ -535,7 +606,13 @@ async function restoreBackup(file: File) {
       MAX_REVIEW_CARDS
     )
       throw new Error("匯入後小卡會超過 2000 張，請先整理。");
+    if (
+      reviewDecks.value.length + (restored.reviewDecks?.length || 0) >
+      MAX_REVIEW_DECKS
+    )
+      throw new Error("匯入後卡組會超過 200 組，請先整理。");
     books.value = [...books.value, ...restored];
+    reviewDecks.value = [...reviewDecks.value, ...(restored.reviewDecks || [])];
     reviewCards.value = [...reviewCards.value, ...(restored.reviewCards || [])];
     restored.forEach((b) => dirtyIds.add(b.document.id));
     queueSave();
@@ -727,6 +804,7 @@ function scheduleResize() {
 async function loadFile(file?: File) {
   if (!file || busy.value || turning.value) return;
   const asCards = cardImport.value;
+  const targetDeckId = importDeckId.value;
   cardImport.value = false;
   parsing.value = true;
   importOpen.value = false;
@@ -756,9 +834,14 @@ async function loadFile(file?: File) {
     if (asCards) {
       const record = books.value.find((b) => b.document.id === candidate.id);
       if (record) {
+        cardWorking.value = true;
         const { classifyBookCards } = await import("./core/cardTopics");
-        addReviewCards(await classifyBookCards(record, cardsFromBook(record)));
+        addReviewCards(
+          await classifyBookCards(record, cardsFromBook(record)),
+          targetDeckId,
+        );
       }
+      cardWorking.value = false;
       libraryView.value = "cards";
       shelfOpen.value = true;
     }
@@ -769,6 +852,7 @@ async function loadFile(file?: File) {
       true,
     );
   } finally {
+    cardWorking.value = false;
     if (fileInput.value) fileInput.value.value = "";
     if (pdfInput.value) pdfInput.value.value = "";
     if (pendingResize.value) {
@@ -952,6 +1036,7 @@ onMounted(async () => {
     if (library.storageWarning) notify(library.storageWarning, true);
     books.value = library.books;
     reviewCards.value = library.reviewCards || [];
+    reviewDecks.value = library.reviewDecks || [];
     activeId.value = library.activeId;
     library.books.forEach((b) => dirtyIds.add(b.document.id));
     const saved =
@@ -1169,25 +1254,51 @@ onBeforeUnmount(() => {
     <nav v-if="shelfOpen" class="library-nav" aria-label="資料區塊">
       <button
         :aria-current="libraryView === 'books' ? 'page' : undefined"
+        :disabled="busy"
         @click="showShelf"
       >
         我的書架
       </button>
       <button
         :aria-current="libraryView === 'cards' ? 'page' : undefined"
+        :disabled="busy"
         @click="showCards"
       >
         考前小卡 <span>{{ reviewCards.length }}</span>
       </button>
     </nav>
-    <StudyCards
-      v-if="shelfOpen && libraryView === 'cards'"
+    <StudyDecks
+      v-if="shelfOpen && libraryView === 'cards' && !activeDeck"
+      :decks="reviewDecks"
       :cards="reviewCards"
+      :busy="busy || backupWorking"
+      @open="activeDeckId = $event"
+      @create="createDeck"
+      @rename="renameDeck"
+      @remove="removeDeck"
+    />
+    <StudyCards
+      v-if="shelfOpen && libraryView === 'cards' && activeDeck"
+      :key="activeDeck.id"
+      :deck-id="activeDeck.id"
+      :deck-title="activeDeck.title"
+      :decks="reviewDecks"
+      :cards="deckCards"
+      :total-count="reviewCards.length"
       :books="books"
       :busy="busy || backupWorking"
       @add="addReviewCards"
       @save="saveReviewCard"
       @retag="retagReviewCards"
+      @back="activeDeckId = ''"
+      @move="moveCards"
+      @working="cardWorking = $event"
+      @cleanup-media="
+        cleanupPending(
+          books.map((b) => b.document),
+          reviewCards.flatMap((c) => (c.image ? [c.image.mediaId] : [])),
+        )
+      "
       @remove="removeReviewCard"
       @source="openBook"
       @import="importForCards"

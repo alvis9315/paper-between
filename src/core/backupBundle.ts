@@ -7,18 +7,24 @@ import {
   stageAsset,
   validateBookMedia,
 } from "./media";
-import type { BookRecord, MediaAsset, ReviewCard } from "./model";
+import type { BookRecord, MediaAsset, ReviewCard, ReviewDeck } from "./model";
 import { validateAnnotations } from "./annotations";
 import { restoreReviewCards } from "./reviewCards";
+import { withReviewDecks, restoreReviewDecks } from "./reviewDecks";
 import { theme } from "./theme";
 export type RestoredBooks = BookRecord[] & {
   reviewCards?: ReviewCard[];
+  reviewDecks?: ReviewDeck[];
   settings?: { theme?: "light" | "dark" };
 };
 export async function createBundle(
   books: BookRecord[],
   reviewCards: ReviewCard[] = [],
+  reviewDecks: ReviewDeck[] = [],
 ): Promise<Blob> {
+  const grouped = withReviewDecks({ books, reviewCards, reviewDecks });
+  reviewCards = grouped.reviewCards || [];
+  reviewDecks = grouped.reviewDecks || [];
   const characters = books.reduce(
     (n, b) => n + b.document.blocks.reduce((m, x) => m + x.html.length, 0),
     0,
@@ -58,6 +64,7 @@ export async function createBundle(
       version: 2,
       books: records,
       reviewCards,
+      reviewDecks,
       assets,
       settings: { theme: theme.value, imageMaxEdge: 2000 },
     }),
@@ -90,7 +97,11 @@ export async function readBundle(file: File): Promise<RestoredBooks> {
         ]),
       ),
     );
-    if (books.reviewCards.some((c) => c.image))
+    Object.assign(
+      books,
+      restoreReviewDecks(metadata.reviewDecks, books.reviewCards),
+    );
+    if (books.reviewCards!.some((c) => c.image))
       throw new Error("含圖片的小卡請匯入完整 ZIP。");
     return books;
   }
@@ -120,7 +131,9 @@ export async function readBundle(file: File): Promise<RestoredBooks> {
     manifest.version !== 2 ||
     !Array.isArray(manifest.books) ||
     manifest.books.length > 500 ||
-    (!manifest.books.length && !manifest.reviewCards?.length) ||
+    (!manifest.books.length &&
+      !manifest.reviewCards?.length &&
+      !manifest.reviewDecks?.length) ||
     !Array.isArray(manifest.assets) ||
     manifest.assets.length > 10000
   )
@@ -313,9 +326,11 @@ export async function readBundle(file: File): Promise<RestoredBooks> {
     )
   )
     throw new Error("備份缺少小卡圖片。");
+  const groups = restoreReviewDecks(manifest.reviewDecks, reviewCards);
   for (const asset of staged) pendingMedia.set(asset.id, asset);
   const restored = books as RestoredBooks;
-  restored.reviewCards = reviewCards;
+  restored.reviewCards = groups.reviewCards;
+  restored.reviewDecks = groups.reviewDecks;
   if (
     manifest.settings?.theme === "light" ||
     manifest.settings?.theme === "dark"

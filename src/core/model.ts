@@ -55,7 +55,14 @@ export interface BookRecord extends SavedState {
   favorite?: boolean;
   progress: number;
 }
+export interface ReviewDeck {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+}
 export interface ReviewCard {
+  deckId?: string;
   id: string;
   title: string;
   body: string;
@@ -79,6 +86,7 @@ export interface ReviewCard {
 export interface LibraryState {
   books: BookRecord[];
   reviewCards?: ReviewCard[];
+  reviewDecks?: ReviewDeck[];
   activeId?: string;
   storageWarning?: string;
 }

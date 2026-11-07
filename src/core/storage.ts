@@ -1,4 +1,11 @@
-﻿import type { BookRecord, LibraryState, SavedState, ReviewCard } from "./model";
+﻿import type {
+  BookRecord,
+  LibraryState,
+  SavedState,
+  ReviewCard,
+  ReviewDeck,
+} from "./model";
+import { withReviewDecks } from "./reviewDecks";
 import { createRecord } from "./library";
 import { database } from "./database";
 import { mediaIds, pendingMedia } from "./media";
@@ -28,7 +35,12 @@ export async function loadLibrary(): Promise<LibraryState> {
         req.onerror = () => reject(req.error);
         req.onsuccess = () => {
           const index = req.result as
-            | { ids: string[]; activeId?: string; reviewCards?: ReviewCard[] }
+            | {
+                ids: string[];
+                activeId?: string;
+                reviewCards?: ReviewCard[];
+                reviewDecks?: ReviewDeck[];
+              }
             | undefined;
           if (!index) {
             resolve(undefined);
@@ -40,6 +52,7 @@ export async function loadLibrary(): Promise<LibraryState> {
               books,
               activeId: index.activeId,
               reviewCards: index.reviewCards || [],
+              reviewDecks: index.reviewDecks || [],
             });
             return;
           }
@@ -54,13 +67,25 @@ export async function loadLibrary(): Promise<LibraryState> {
                   books,
                   activeId: index.activeId,
                   reviewCards: index.reviewCards || [],
+                  reviewDecks: index.reviewDecks || [],
                 });
             };
           }
         };
       },
     );
-    if (state) return await retireDemo(state);
+    if (state) {
+      const migrated = withReviewDecks(state);
+      if (migrated !== state) {
+        try {
+          await saveLibrary(migrated);
+        } catch {
+          migrated.storageWarning =
+            "舊小卡已整理至卡組，但這次無法儲存，請先下載備份。";
+        }
+      }
+      return await retireDemo(migrated);
+    }
     const legacy = await new Promise<SavedState | undefined>(
       (resolve, reject) => {
         const req = db
@@ -96,6 +121,7 @@ export async function saveLibrary(
   changedIds?: string[],
   removedIds: string[] = [],
 ): Promise<void> {
+  state = withReviewDecks(state);
   const mediaInUse = new Set([
     ...state.books.flatMap((b) => mediaIds(b.document)),
     ...(state.reviewCards || []).flatMap((c) =>
@@ -142,6 +168,7 @@ export async function saveLibrary(
           {
             version: 1,
             reviewCards: structuredClone(state.reviewCards || []),
+            reviewDecks: structuredClone(state.reviewDecks || []),
             ids: state.books.map((b) => b.document.id),
             activeId: state.activeId,
           },

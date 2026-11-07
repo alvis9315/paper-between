@@ -9,6 +9,7 @@ tests/*
 !tests/study.spec.ts
 !tests/word.spec.ts
 !tests/study-layout.spec.ts
+!tests/decks.spec.ts
 *.log
 .env
 .env.*

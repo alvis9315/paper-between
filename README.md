@@ -8,7 +8,7 @@
 
 線上入口：<https://paper-between-alvis9315.javacj02004.chatgpt.site>。每輪優化完成、驗證通過後，直接同步 GitHub 並部署既有 Site；實際部署狀態與來源 commit 見 [STATUS.md](STATUS.md)。
 
-目前原始碼版本：**1.8.1**。換電腦或換 agent 時，先讀下列文件：
+目前原始碼版本：**1.9.0**。換電腦或換 agent 時，先讀下列文件：
 
 | 文件 | 用途 |
 |---|---|
@@ -23,7 +23,8 @@
 ## 功能
 
 - 首次使用為空白書架，自行匯入 PDF、Word 或書架備份，也可新增圖文／貼上文字；不預載任何範例或私人文件。
-- 考前小卡與書架同層：桌機左側選題、右側閱讀；手機搜尋後選題、單卡滑動，操作收進選單。可用來源／主題／收藏篩選，搜尋支援別名與全半形，提供 17／19／21px 字級、速答、完整表格／答案、題圖放大與原文對照。
+- 考前小卡先進卡組管理，可新增、搜尋、改名、刪除不同卡組；點進卡組後沿用標籤／來源／收藏與搜尋，彼此獨立。既有小卡整理至「我的小卡」，卡組與空卡組可隨 ZIP 搬移。
+- 卡組內桌機左側選題、右側閱讀；手機搜尋後選題、單卡滑動，操作收進選單。可用來源／主題／收藏篩選，搜尋支援別名與全半形，提供 17／19／21px 字級、速答、完整表格／答案、題圖放大與原文對照。
 - PDF／固定 Word 建卡會依原頁標題與內容辨識主題；來源檔名獨立顯示，無可靠線索列為未分類。進入小卡頁會修復舊檔名分類，保護人工標籤、答案與收藏。
 - 可自建、從筆記／重點建立，或直接匯入包含資料的 AppsScript 小卡 HTML／JSON；使用者指定範例的 `index.html` 可直接選取，不執行檔案內程式。卡片、格式、收藏、題圖與原頁文字可隨 ZIP 搬移；格式與限制見 [小卡說明](docs/STUDY-CARDS.md)。
 - PDF 工具列「圖文重排」可選上圖下文／左圖右文／全文，調整圖解區域及欄位順序、校正文字與主題，另建圖文筆記後自動分頁，原檔保留。
@@ -95,6 +96,6 @@ npm run preview
 
 第三方套件授權會在建置時彙整到 `dist/third-party-notices.txt`。
 
-`tests/reader.spec.ts`、`tests/shelf.spec.ts`、`tests/controls.spec.ts`、`tests/study.spec.ts`、`tests/study-layout.spec.ts` 與 `tests/word.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF／Word／小卡資料，不含私人筆記。安裝 Google Chrome 並執行 `npm exec playwright install webkit` 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
+`tests/reader.spec.ts`、`tests/shelf.spec.ts`、`tests/controls.spec.ts`、`tests/study.spec.ts`、`tests/study-layout.spec.ts`、`tests/decks.spec.ts` 與 `tests/word.spec.ts` 隨 repo 保存，使用合成文字與程式產生的 PDF／Word／小卡資料，不含私人筆記。安裝 Google Chrome 並執行 `npm exec playwright install webkit` 後執行 `npm test`，Playwright 會自動啟動固定 port 4112 的開發伺服器；涵蓋閱讀、搜尋、跳頁、PDF 放大、觸控、書架操作與日夜顯示。測試報告與截圖是可重建產物，不進版控。
 
 PDF／Word 內容重組的現況、限制與後續方案見 [文件重排評估](docs/DOCUMENT-REFLOW.md)；已提供圖解＋正文重排第一階段，原貌 PDF 保留；OCR 與彩色卡片自動拆分尚未提供。

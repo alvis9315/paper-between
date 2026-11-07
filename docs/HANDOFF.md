@@ -1,10 +1,16 @@
 # 頁白｜接手與中斷紀錄
 
-最後更新：2026-11-07（Asia/Taipei）。原始碼版本：**1.8.1**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
+最後更新：2026-11-07（Asia/Taipei）。原始碼版本：**1.9.0**。遠端：<https://github.com/alvis9315/paper-between>，分支：`main`。
 
 ## 目前接續位置
 
-本輪修正從筆記建立小卡只用「考題」檔名當標籤。1.8.1 build、完整 29 情境 × Chrome／WebKit 共 58 個執行個案與 diff 檢查通過，GitHub 同步及 Sites 版本 16 部署成功，沒有未完成的本輪程式工作。
+本輪新增卡組管理層；卡組內保留原搜尋／標籤／閱讀。1.9.0 build、33 情境 × Chrome／WebKit 共 66 個執行個案與 diff 檢查通過，正在同步 GitHub／Sites，線上仍是下方 1.8.1。
+
+- `StudyDecks.vue`：卡組首頁、名稱搜尋／新增／改名／刪除確認；App 的 reviewDecks／activeDeckId 管理組別，進入後只傳該組 cards 給 StudyCards。移動只改 deckId；標籤、內容、收藏與 sourceKey 保留。相同來源允許在不同卡組建卡，同組去重。
+- `core/reviewDecks.ts`：舊平放資料完整整理至一組「我的小卡」，不依來源或標籤拆組；新卡組不是來源檔名／主題標籤。`storage.ts` 保存 metadata，`backupBundle.ts` 支援空卡組、舊格式、全量歸屬驗證及 ID 重映射。
+- 新卡／檔案匯入／從筆記建立都歸入目前卡組。匯入／分類時透過 working 事件鎖住切換，原始目標 ID 明確傳回 App；媒體清理使用所有卡組的全域引用，避免移除其他組尚未落盤的圖片。偏好依 deckId 保存；頂部「考前小卡」一律回管理首頁。舊的卡組內標籤操作不變。
+- 實際指定 HTML 兩引擎驗證 184 卡／18 標籤／兩來源／五張含題圖，加入一組並保留另一空組，ZIP 歸屬一致；私人資料不提交。
+- `tests/decks.spec.ts` 新增生命週期、隔離、移動、舊資料遷移、空卡組、備份及錯誤歸屬；既有小卡測試增加進入卡組步驟，備份還原為獨立組，合計數量仍驗證。
 
 - `core/cardTopics.ts` 讀 PDF 字級／座標合併標題，跨頁樣式過濾圖表標籤；依內容／原頁位置分類，無線索用重複縮寫或留空，不使用私人題庫／固定科目詞庫。固定 Word 共用 PDF 路徑；一般 Word 仍依 heading。
 - `StudyCards.vue` 生成／舊卡修復接到分類；初次掛載修復只有檔名／空標籤的舊自動卡，生成面板可手動更新自動分類。App 僅批次寫 tags／topicOrigin，不替換卡片正文／ID／sourceKey／收藏；手動標籤與 HTML 原分類排除。解析原檔失敗不部分加入／更新。

@@ -1,5 +1,21 @@
 import { test, expect, type Page } from "@playwright/test";
 import { zipSync, strToU8 } from "fflate";
+async function enterDeck(page: Page) {
+  await expect(page.getByRole("main", { name: "小卡組管理" })).toBeVisible();
+  const open = page.getByRole("button", { name: /^開啟卡組：/ });
+  if (await open.count()) await open.first().click();
+  else {
+    await page
+      .getByRole("button", { name: "新增卡組", exact: true })
+      .first()
+      .click();
+    await page
+      .getByRole("textbox", { name: "卡組名稱", exact: true })
+      .fill("我的小卡");
+    await page.getByRole("button", { name: "建立卡組", exact: true }).click();
+  }
+  await expect(page.locator(".study-page")).toBeVisible();
+}
 async function seed(page: Page) {
   await page.goto("/");
   await expect(page.locator("main.bookshelf-page")).toBeVisible();
@@ -32,6 +48,7 @@ async function seed(page: Page) {
   );
   await page.getByRole("link", { name: "頁白首頁" }).click();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
 }
 async function stored(page: Page) {
   return page.evaluate(async () => {
@@ -90,6 +107,7 @@ test("study cards use headings, filter a related deck, edit, persist, and restor
   );
   await page.getByRole("link", { name: "頁白首頁" }).click();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await page.getByRole("button", { name: "從筆記建立", exact: true }).click();
   await expect(
     page.getByRole("dialog", { name: "從筆記建立小卡" }),
@@ -120,9 +138,14 @@ test("study cards use headings, filter a related deck, edit, persist, and restor
     page.getByRole("dialog", { name: "匯入書架備份", exact: true }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await expect(
-    page.getByRole("button", { name: "全部小卡 6", exact: true }),
+    page.getByRole("button", { name: "全部小卡 3", exact: true }),
   ).toBeVisible();
+  await expect
+    .poll(async () => (await stored(page)).reviewCards?.length)
+    .toBe(6);
+  expect((await stored(page)).reviewDecks).toHaveLength(2);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("textbox", { name: "搜尋小卡" }).fill("無線");
   await page.locator(".study-result-list > button").first().click();
@@ -162,6 +185,7 @@ test("manual card-only libraries persist and round-trip without books", async ({
   await page.goto("/");
   await expect(page.locator("main.bookshelf-page")).toBeVisible();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await page.getByRole("button", { name: "新增小卡", exact: true }).click();
   await page.getByRole("textbox", { name: "小卡標題" }).fill("考前定義");
   await page.getByRole("textbox", { name: "小卡標籤" }).fill("定義");
@@ -186,6 +210,7 @@ test("manual card-only libraries persist and round-trip without books", async ({
   expect(restored.cards).toHaveLength(1);
   await page.reload();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await expect(page.locator(".review-card")).toContainText("可以獨立建立");
   await page.getByRole("button", { name: "刪除小卡", exact: true }).click();
   await page.getByRole("button", { name: "確認刪除小卡", exact: true }).click();
@@ -291,6 +316,7 @@ test("PDF reflow keeps the diagram, editable text, original source and image-bac
   }
   await page.getByRole("link", { name: "頁白首頁" }).click();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await page.getByRole("button", { name: "從筆記建立", exact: true }).click();
   await page
     .getByRole("combobox", { name: "小卡來源筆記", exact: true })
@@ -332,6 +358,7 @@ test("PDF reflow keeps the diagram, editable text, original source and image-bac
   );
   await page.getByRole("link", { name: "頁白首頁" }).click();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await expect(page.locator(".review-card")).toContainText(
     "圖片與人工確認文字一起保存。",
   );
@@ -350,6 +377,7 @@ test("PDF can be imported directly into study cards and malformed card backups l
   await page.goto("/");
   await expect(page.locator("main.bookshelf-page")).toBeVisible();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await page.getByRole("button", { name: "從筆記建立", exact: true }).click();
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "匯入 PDF", exact: true }).click();
@@ -416,6 +444,7 @@ test("large related card sets can reveal more results and jump directly to the l
   });
   await page.reload();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await page.getByRole("textbox", { name: "搜尋小卡" }).fill("共同主題");
   const results = page.getByRole("complementary", { name: "小卡搜尋結果" });
   await expect(results.locator("strong")).toHaveCount(60);

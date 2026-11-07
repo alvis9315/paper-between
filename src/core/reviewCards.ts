@@ -175,6 +175,7 @@ export function restoreReviewCards(
     return {
       ...cardDetails(card),
       id: crypto.randomUUID(),
+      deckId: typeof card.deckId === "string" ? card.deckId : undefined,
       title: card.title,
       body: card.body,
       tags: [...new Set<string>(card.tags)],

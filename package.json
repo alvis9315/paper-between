@@ -1,7 +1,7 @@
 {
   "name": "yebai-notebook",
   "private": true,
-  "version": "1.8.1",
+  "version": "1.9.0",
   "type": "module",
   "scripts": {
     "dev": "node scripts/copy-pdf-assets.mjs && vite --host 127.0.0.1",

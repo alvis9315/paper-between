@@ -1,9 +1,26 @@
 import { test, expect, type Page } from "@playwright/test";
 
+async function enterDeck(page: Page) {
+  await expect(page.getByRole("main", { name: "小卡組管理" })).toBeVisible();
+  const open = page.getByRole("button", { name: /^開啟卡組：/ });
+  if (await open.count()) await open.first().click();
+  else {
+    await page
+      .getByRole("button", { name: "新增卡組", exact: true })
+      .first()
+      .click();
+    await page
+      .getByRole("textbox", { name: "卡組名稱", exact: true })
+      .fill("我的小卡");
+    await page.getByRole("button", { name: "建立卡組", exact: true }).click();
+  }
+  await expect(page.locator(".study-page")).toBeVisible();
+}
 async function openCards(page: Page) {
   await page.goto("/");
   await expect(page.locator("main.bookshelf-page")).toBeVisible();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await expect(page.locator(".study-page")).toBeVisible();
 }
 async function sampleDeck(page: Page) {
@@ -166,6 +183,7 @@ test("desktop cards align with the header and connect rich answers, sources, fav
     .toBe(3);
   await page.reload();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await expect(page.locator(".review-answer")).toHaveCSS("font-size", "19px");
   await expect(
     page.getByRole("button", { name: "取消收藏這張小卡", exact: true }),
@@ -418,6 +436,7 @@ test("legacy filename tags are repaired without changing cards or curated tags, 
   );
   await page.getByRole("link", { name: "頁白首頁" }).click();
   await page.getByRole("button", { name: /^考前小卡/ }).click();
+  await enterDeck(page);
   await expect
     .poll(
       async () =>
@@ -487,13 +506,11 @@ test("structured imports keep many distinct topics, and unclassified text never 
     tags: ["Topic " + n],
     answerHtml: "<p>Answer " + n + "</p>",
   }));
-  await page
-    .locator("#card-deck-file")
-    .setInputFiles({
-      name: "many.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify({ cards: data })),
-    });
+  await page.locator("#card-deck-file").setInputFiles({
+    name: "many.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ cards: data })),
+  });
   await expect
     .poll(async () => (await stored(page)).reviewCards?.length)
     .toBe(120);

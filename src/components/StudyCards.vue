@@ -28,36 +28,51 @@ import {
   ZoomIn,
   FileText,
   Zap,
+  ArrowLeft,
+  ArrowRightLeft,
 } from "@lucide/vue";
 import IconAction from "./IconAction.vue";
 import ChoiceSelect from "./ChoiceSelect.vue";
 import ModalShell from "./ModalShell.vue";
 import { canRetag, classifyBookCards } from "../core/cardTopics";
 import { cardsFromBook, MAX_REVIEW_CARDS } from "../core/reviewCards";
-import { mediaUrl, cleanupPending } from "../core/media";
+import { mediaUrl } from "../core/media";
 import {
   answerHtml,
   highlightCardHtml,
   normalizeCardSearch,
 } from "../core/cardContent";
-import type { BookRecord, ReviewCard } from "../core/model";
+import type { BookRecord, ReviewCard, ReviewDeck } from "../core/model";
 const props = defineProps<{
+  deckId: string;
+  deckTitle: string;
+  decks: ReviewDeck[];
   cards: ReviewCard[];
+  totalCount: number;
   books: BookRecord[];
   busy: boolean;
 }>();
 const emit = defineEmits<{
-  add: [cards: ReviewCard[]];
+  back: [];
+  working: [value: boolean];
+  move: [ids: string[], deckId: string];
+  add: [cards: ReviewCard[], deckId: string];
+  "cleanup-media": [];
   save: [card: ReviewCard];
   retag: [cards: ReviewCard[]];
   remove: [id: string];
   source: [id: string];
   import: [kind: "pdf" | "word"];
 }>();
-const preferenceKey = "paper-between-card-view";
+const preferenceKey = "paper-between-card-view:" + props.deckId;
 let saved: { selected?: string; font?: number } = {};
 try {
-  saved = JSON.parse(localStorage.getItem(preferenceKey) || "{}") || {};
+  saved =
+    JSON.parse(
+      localStorage.getItem(preferenceKey) ||
+        localStorage.getItem("paper-between-card-view") ||
+        "{}",
+    ) || {};
 } catch {
   /* Reading works without storage. */
 }
@@ -88,6 +103,9 @@ const showGenerate = ref(false),
   classifying = ref(false),
   topicStatus = ref(""),
   importError = ref("");
+watch([importing, classifying], ([a, b]) => emit("working", a || b), {
+  flush: "sync",
+});
 const resultLimit = ref(60),
   imageZoom = ref("1");
 const searchInput = ref<HTMLInputElement>(),
@@ -96,6 +114,12 @@ const searchInput = ref<HTMLInputElement>(),
   content = ref<HTMLElement>(),
   resultList = ref<HTMLElement>();
 const editing = shallowRef<ReviewCard>();
+const editingDeckId = ref(props.deckId),
+  showMove = ref(false),
+  moveDeckId = ref("");
+const otherDecks = computed(() =>
+  props.decks.filter((d) => d.id !== props.deckId),
+);
 const title = ref(""),
   body = ref(""),
   tags = ref(""),
@@ -397,6 +421,7 @@ function toggleFavorite() {
 function edit(card?: ReviewCard) {
   closeTools();
   editing.value = card;
+  editingDeckId.value = card?.deckId || props.deckId;
   title.value = card?.title || "";
   body.value = card?.body || "";
   tags.value = card?.tags.join("，") || "";
@@ -421,13 +446,14 @@ function save() {
     error.value = "每張最多 8 個標籤，每個最多 60 字。";
     return;
   }
-  if (!editing.value && props.cards.length >= MAX_REVIEW_CARDS) {
+  if (!editing.value && props.totalCount >= MAX_REVIEW_CARDS) {
     error.value = "最多保存 2000 張小卡，請先整理或備份。";
     return;
   }
   const card: ReviewCard = {
     ...editing.value,
     id: editing.value?.id || crypto.randomUUID(),
+    deckId: editingDeckId.value,
     title: title.value.trim(),
     body: body.value.trim(),
     tags: parsedTags,
@@ -445,13 +471,14 @@ function save() {
     updatedAt: Date.now(),
   };
   emit("save", card);
+  reset();
   selectedId.value = card.id;
   showEdit.value = false;
   showResults.value = false;
 }
 async function generate() {
   if (!source.value || classifying.value) return;
-  if (props.cards.length + generated.value.length > MAX_REVIEW_CARDS) {
+  if (props.totalCount + generated.value.length > MAX_REVIEW_CARDS) {
     error.value = "超過 2000 張小卡，請改用重點摘錄或先整理。";
     return;
   }
@@ -462,7 +489,7 @@ async function generate() {
       mode.value === "highlights"
         ? generated.value
         : await classifyBookCards(source.value, generated.value);
-    emit("add", fresh);
+    emit("add", fresh, props.deckId);
     reset();
     await nextTick();
     selectedId.value = fresh[0]?.id || "";
@@ -541,9 +568,9 @@ async function loadDeck(event: Event) {
     const cards = await importCardDeck(file);
     const keys = new Set(props.cards.map((c) => c.sourceKey));
     const fresh = cards.filter((c) => !keys.has(c.sourceKey));
-    if (props.cards.length + fresh.length > MAX_REVIEW_CARDS)
+    if (props.totalCount + fresh.length > MAX_REVIEW_CARDS)
       throw new Error("加入後會超過 2000 張小卡，請先整理或分批匯入。");
-    emit("add", fresh);
+    emit("add", fresh, props.deckId);
     if (fresh.length) {
       reset();
       await nextTick();
@@ -553,10 +580,7 @@ async function loadDeck(event: Event) {
   } catch (e) {
     importError.value =
       e instanceof Error ? e.message : "無法讀取這份小卡，原有資料已保留。";
-    cleanupPending(
-      props.books.map((b) => b.document),
-      props.cards.flatMap((c) => (c.image ? [c.image.mediaId] : [])),
-    );
+    emit("cleanup-media");
   } finally {
     importing.value = false;
     input.value = "";
@@ -645,7 +669,17 @@ onBeforeUnmount(() => {
     :style="{ '--card-font-size': `${font}px` }"
     :aria-busy="importing"
   >
-    <h1 class="visually-hidden">考前小卡</h1>
+    <div class="study-deck-heading">
+      <button
+        class="study-text-button"
+        aria-label="返回小卡組"
+        :disabled="busy || importing || classifying"
+        @click="emit('back')"
+      >
+        <ArrowLeft :size="17" /><span>小卡組</span>
+      </button>
+      <h1>{{ deckTitle }}</h1>
+    </div>
     <input
       id="card-deck-file"
       ref="deckInput"
@@ -738,6 +772,18 @@ onBeforeUnmount(() => {
           label="從筆記建立"
           :disabled="busy || importing || classifying"
           @click="generateDialog"
+        />
+        <IconAction
+          v-if="cards.length && otherDecks.length"
+          :compact="!mobile"
+          :icon="ArrowRightLeft"
+          label="移動小卡至其他卡組"
+          :disabled="busy || importing || classifying || !filtered.length"
+          @click="
+            closeTools();
+            moveDeckId = otherDecks[0]?.id || '';
+            showMove = true;
+          "
         />
         <IconAction
           :compact="!mobile"
@@ -1051,6 +1097,36 @@ onBeforeUnmount(() => {
       </section>
     </div>
   </main>
+  <ModalShell v-if="showMove" title="移動小卡" @close="showMove = false"
+    ><div class="study-form">
+      <p>
+        將目前篩選的
+        {{ filtered.length }} 張小卡移至另一個卡組，標籤、內容與收藏會保留。
+      </p>
+      <label
+        >目標卡組<ChoiceSelect
+          v-model="moveDeckId"
+          label="目標卡組"
+          :options="
+            otherDecks.map((d) => ({ value: d.id, label: d.title }))
+          " /></label
+      ><button
+        class="import-button"
+        :disabled="!moveDeckId || !filtered.length"
+        @click="
+          emit(
+            'move',
+            filtered.map((c) => c.id),
+            moveDeckId,
+          );
+          showMove = false;
+          reset();
+        "
+      >
+        移動 {{ filtered.length }} 張小卡
+      </button>
+    </div></ModalShell
+  >
   <ModalShell v-if="showTags" title="全部小卡標籤" @close="showTags = false"
     ><div class="study-tag-panel">
       <h3>主題</h3>
@@ -1180,6 +1256,12 @@ onBeforeUnmount(() => {
     :title="editing ? '編輯小卡' : '新增小卡'"
     @close="showEdit = false"
     ><form class="study-form" @submit.prevent="save">
+      <label v-if="decks.length > 1"
+        >所屬卡組<ChoiceSelect
+          v-model="editingDeckId"
+          label="小卡所屬卡組"
+          :options="decks.map((d) => ({ value: d.id, label: d.title }))"
+      /></label>
       <label
         >標題<input
           v-model="title"

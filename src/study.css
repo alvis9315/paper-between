@@ -1,3 +1,27 @@
+.study-deck-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex-shrink: 0;
+  height: 26px;
+}
+.study-deck-heading button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 4px 0;
+}
+.study-deck-heading h1 {
+  font-size: 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  margin: 0;
+  font-weight: 600;
+}
 .study-page {
   flex: 1;
   min-height: 0;
